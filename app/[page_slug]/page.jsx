@@ -6,7 +6,8 @@ import { fetchPageData, fetchPersonaBySlug, getPersonaMetadata } from '../../src
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
-  const persona = await fetchPersonaBySlug(params.page_slug);
+  const { page_slug } = await params;
+  const persona = await fetchPersonaBySlug(page_slug);
 
   if (!persona) {
     return {
@@ -18,7 +19,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function PersonaPage({ params }) {
-  const pageData = await fetchPageData(params.page_slug);
+  const { page_slug } = await params;
+  const pageData = await fetchPageData(page_slug);
 
   if (!pageData) {
     notFound();
