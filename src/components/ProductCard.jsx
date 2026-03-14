@@ -1,9 +1,12 @@
+import Link from 'next/link';
+
 function ProductCard({ product, rank }) {
   const bannerClass = rank === 2 ? 'banner--purple' : 'banner--lime';
   const skinPillClass = rank === 2 ? 'skin-tag-pill--purple' : 'skin-tag-pill--lime';
   const rawScore = Number(product.score) || 0;
   const matchPercent = Math.max(0, Math.min(100, Math.round(rawScore <= 10 ? rawScore * 10 : rawScore)));
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
+  const detailsHref = product.productSlug ? `/sunscreens/${product.productSlug}` : '/sunscreens';
 
   return (
     <article className="card">
@@ -131,6 +134,14 @@ function ProductCard({ product, rank }) {
           </div>
         </div>
       </details>
+
+      <div className="card__bottom">
+        <div className="card__cta">
+          <Link href={detailsHref} className="btn btn--secondary">
+            Details
+          </Link>
+        </div>
+      </div>
     </article>
   );
 }

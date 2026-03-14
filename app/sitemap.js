@@ -1,9 +1,10 @@
-import { fetchAllPersonas, SITE_URL } from '../src/lib/site-data';
+import { fetchAllPersonas, fetchAllProductRoutes, SITE_URL } from '../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
 
 export default async function sitemap() {
   const personas = await fetchAllPersonas();
+  const productRoutes = await fetchAllProductRoutes().catch(() => []);
 
   return [
     {
@@ -17,6 +18,10 @@ export default async function sitemap() {
     ...personas.map((persona) => ({
       url: `${SITE_URL}/${persona.page_slug}`,
       lastModified: persona.created_at || new Date()
+    })),
+    ...productRoutes.map((product) => ({
+      url: `${SITE_URL}/sunscreens/${product.slug}`,
+      lastModified: product.created_at || new Date()
     }))
   ];
 }
