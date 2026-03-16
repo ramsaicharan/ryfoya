@@ -688,9 +688,11 @@ export function getSunscreensMetadata() {
 export function getProductMetadata(product) {
 
   const fullName =
-    product?.brandName && product?.productName
-      ? `${product.brandName} ${product.productName}`
-      : product?.productName;
+  product?.brandName && product?.productName
+    ? `${product.brandName} ${product.productName}${product?.spf ? ` SPF ${product.spf}` : ''}`
+    : product?.productName
+      ? `${product.productName}${product?.spf ? ` SPF ${product.spf}` : ''}`
+      : '';
   const title = fullName ? `${fullName} | Ryfoya` : 'Sunscreen Details | Ryfoya';
   const description =
     product?.overallPros?.[0] ||
