@@ -29,6 +29,16 @@ function toList(value, fallback) {
   return fallback;
 }
 
+function normalizeImageLinks(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+}
+
 function formatProductValue(value, fallback) {
   if (!value) {
     return fallback;
@@ -229,8 +239,10 @@ export function normalizeRow(row, persona) {
     score,
     productName: product?.product_name || 'Unnamed Product',
     brandName: product?.brand_name || 'Unknown Brand',
+    productBuyLink: String(product?.product_buy_link || '').trim(),
     spfRating: product?.spf_rating || 'SPF N/A',
     paRating: product?.pa_rating || 'PA N/A',
+    imageLinks: normalizeImageLinks(product?.image_links),
     filterType: formatProductValue(product?.filter_type, 'Filter Type N/A'),
     productFormat: formatProductValue(product?.product_format, 'Format N/A'),
     labels,
@@ -255,8 +267,10 @@ export function normalizeOverallProduct(product) {
     score,
     productName: product.product_name || 'Unnamed Product',
     brandName: product.brand_name || 'Unknown Brand',
+    productBuyLink: String(product.product_buy_link || '').trim(),
     spfRating: product.spf_rating || 'SPF N/A',
     paRating: product.pa_rating || 'PA N/A',
+    imageLinks: normalizeImageLinks(product.image_links),
     filterType: formatProductValue(product.filter_type, 'Filter Type N/A'),
     productFormat: formatProductValue(product.product_format, 'Format N/A'),
     pros,
@@ -313,7 +327,7 @@ export async function fetchProductsForPersona(personaId) {
   const supabase = getSupabaseServerClient();
   const baseSelect = 'id, product_id, persona_id, score, labels, pros, cons';
   const productFields =
-    'id, slug, product_name, brand_name, spf_rating, pa_rating, ph_value, filter_type, product_format';
+    'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
   const selectWithNamedFk = `${baseSelect}, product:products!product_skin_scores_product_id_fkey(${productFields})`;
   const selectWithDefaultRelation = `${baseSelect}, products(${productFields})`;
 
@@ -361,7 +375,7 @@ export async function fetchOverallSunscreens() {
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, slug, product_name, brand_name, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons'
+      'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons, image_links'
     )
     .not('overall_score', 'is', null)
     .order('overall_score', { ascending: false });
@@ -389,8 +403,10 @@ function normalizeProductDetail(product) {
     productSlug: product.slug || '',
     productName: product.product_name || 'Unnamed Product',
     brandName: product.brand_name || 'Unknown Brand',
+    productBuyLink: String(product.product_buy_link || '').trim(),
     spfRating: product.spf_rating || 'SPF N/A',
     paRating: product.pa_rating || 'PA N/A',
+    imageLinks: normalizeImageLinks(product.image_links),
     totalIngredients: product.total_ingredients || null,
     sweatResistance: formatProductValue(product.sweat_resistance, 'Not specified'),
     phValue: product.ph_value || 'Not specified',
@@ -414,7 +430,7 @@ async function fetchProductBySlug(productSlug) {
   const { data, error } = await supabase
     .from('products')
     .select(
-      'id, slug, product_name, brand_name, spf_rating, pa_rating, total_ingredients, sweat_resistance, ph_value, filter_type, product_format, eco_reef_safety, nano_status, vegan, cruelty_free, overall_score, overall_pros, overall_cons'
+      'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, total_ingredients, sweat_resistance, ph_value, filter_type, product_format, eco_reef_safety, nano_status, vegan, cruelty_free, overall_score, overall_pros, overall_cons, image_links'
     )
     .eq('slug', productSlug)
     .limit(1);

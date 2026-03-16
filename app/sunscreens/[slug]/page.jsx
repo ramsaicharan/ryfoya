@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import { fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
@@ -154,6 +155,7 @@ export default async function SunscreenDetailPage({ params }) {
   const topMatches = skinMatches.slice(0, 4);
   const performanceFactors = buildPerformanceFactors(evaluations);
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
+  const galleryImages = product.imageLinks || [];
 
   return (
     <div className="product-detail-page">
@@ -161,19 +163,25 @@ export default async function SunscreenDetailPage({ params }) {
         <section className="detail-layout">
           <div className="detail-gallery">
             <div className="detail-gallery__frame">
-              <div className="detail-gallery__blob detail-gallery__blob--purple" />
-              <div className="detail-gallery__blob detail-gallery__blob--lime" />
+              {galleryImages.length > 0 ? (
+                <ProductImageGallery images={galleryImages} productName={product.productName} />
+              ) : (
+                <>
+                  <div className="detail-gallery__blob detail-gallery__blob--purple" />
+                  <div className="detail-gallery__blob detail-gallery__blob--lime" />
 
-              <div className="detail-bottle">
-                <div className="detail-bottle__cap" />
-                <div className="detail-bottle__band" />
-                <div className="detail-bottle__label">
-                  <div className="detail-bottle__brand">{brandForArt}</div>
-                  <div className="detail-bottle__spf-label">SPF</div>
-                  <div className="detail-bottle__spf-value">{product.spfRating || '50+'}</div>
-                  <div className="detail-bottle__format">{product.productFormat}</div>
-                </div>
-              </div>
+                  <div className="detail-bottle">
+                    <div className="detail-bottle__cap" />
+                    <div className="detail-bottle__band" />
+                    <div className="detail-bottle__label">
+                      <div className="detail-bottle__brand">{brandForArt}</div>
+                      <div className="detail-bottle__spf-label">SPF</div>
+                      <div className="detail-bottle__spf-value">{product.spfRating || '50+'}</div>
+                      <div className="detail-bottle__format">{product.productFormat}</div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -197,6 +205,16 @@ export default async function SunscreenDetailPage({ params }) {
                 <span className="detail-badge detail-badge--lime">{product.filterType}</span>
                 <span className="detail-badge detail-badge--lime">{product.productFormat}</span>
               </div>
+              {product.productBuyLink ? (
+                <a
+                  className="detail-buy-link"
+                  href={product.productBuyLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                Buy on Amazon
+                </a>
+              ) : null}
             </div>
 
             <hr className="detail-divider" />
@@ -392,3 +410,4 @@ export default async function SunscreenDetailPage({ params }) {
     </div>
   );
 }
+

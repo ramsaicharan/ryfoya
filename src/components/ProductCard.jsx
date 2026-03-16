@@ -7,6 +7,8 @@ function ProductCard({ product, rank }) {
   const matchPercent = Math.max(0, Math.min(100, Math.round(rawScore <= 10 ? rawScore * 10 : rawScore)));
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
   const detailsHref = product.productSlug ? `/sunscreens/${product.productSlug}` : '/sunscreens';
+  const buyHref = product.productBuyLink || '';
+  const firstImage = product.imageLinks?.[0] || '';
 
   return (
     <article className="card">
@@ -18,62 +20,71 @@ function ProductCard({ product, rank }) {
       </div>
 
       <div className="card__img">
-        <svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
-          <rect x="105" y="50" width="110" height="220" rx="22" fill="#F0ECE6" />
-          <rect x="105" y="50" width="110" height="58" rx="22" fill="#E2DDD5" />
-          <rect x="112" y="112" width="96" height="132" rx="8" fill="white" opacity=".92" />
-          <rect x="112" y="112" width="96" height="22" rx="4" fill="#7C5BFF" />
-          <text
-            x="160"
-            y="127"
-            textAnchor="middle"
-            fontFamily="DM Sans,sans-serif"
-            fontSize="9"
-            fontWeight="700"
-            fill="white"
-            letterSpacing="2"
-          >
-            {brandForArt}
-          </text>
-          <text
-            x="160"
-            y="165"
-            textAnchor="middle"
-            fontFamily="Playfair Display,serif"
-            fontSize="20"
-            fontWeight="700"
-            fill="#0B110B"
-          >
-            SPF
-          </text>
-          <text
-            x="160"
-            y="197"
-            textAnchor="middle"
-            fontFamily="Playfair Display,serif"
-            fontSize="30"
-            fontWeight="800"
-            fill="#7C5BFF"
-          >
-            {product.spfRating || '50+'}
-          </text>
-          <rect x="130" y="207" width="60" height="1.5" rx="1" fill="#E2DDD5" />
-          <text
-            x="160"
-            y="222"
-            textAnchor="middle"
-            fontFamily="DM Sans,sans-serif"
-            fontSize="7.5"
-            fill="#9A9690"
-            letterSpacing="1.5"
-          >
-            {product.paRating || 'BROAD SPECTRUM'}
-          </text>
-          <rect x="142" y="34" width="36" height="22" rx="6" fill="#D5D0C8" />
-          <rect x="154" y="23" width="12" height="15" rx="4" fill="#C8C3BB" />
-          <circle cx="72" cy="268" r="38" fill="#CFF03E" opacity=".18" />
-          <circle cx="256" cy="74" r="26" fill="#7C5BFF" opacity=".08" />
-        </svg>
+        {firstImage ? (
+          <img
+            className="card__img-photo"
+            src={firstImage}
+            alt={product.productName}
+            loading="lazy"
+          />
+        ) : (
+          <svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+            <rect x="105" y="50" width="110" height="220" rx="22" fill="#F0ECE6" />
+            <rect x="105" y="50" width="110" height="58" rx="22" fill="#E2DDD5" />
+            <rect x="112" y="112" width="96" height="132" rx="8" fill="white" opacity=".92" />
+            <rect x="112" y="112" width="96" height="22" rx="4" fill="#7C5BFF" />
+            <text
+              x="160"
+              y="127"
+              textAnchor="middle"
+              fontFamily="DM Sans,sans-serif"
+              fontSize="9"
+              fontWeight="700"
+              fill="white"
+              letterSpacing="2"
+            >
+              {brandForArt}
+            </text>
+            <text
+              x="160"
+              y="165"
+              textAnchor="middle"
+              fontFamily="Playfair Display,serif"
+              fontSize="20"
+              fontWeight="700"
+              fill="#0B110B"
+            >
+              SPF
+            </text>
+            <text
+              x="160"
+              y="197"
+              textAnchor="middle"
+              fontFamily="Playfair Display,serif"
+              fontSize="30"
+              fontWeight="800"
+              fill="#7C5BFF"
+            >
+              {product.spfRating || '50+'}
+            </text>
+            <rect x="130" y="207" width="60" height="1.5" rx="1" fill="#E2DDD5" />
+            <text
+              x="160"
+              y="222"
+              textAnchor="middle"
+              fontFamily="DM Sans,sans-serif"
+              fontSize="7.5"
+              fill="#9A9690"
+              letterSpacing="1.5"
+            >
+              {product.paRating || 'BROAD SPECTRUM'}
+            </text>
+            <rect x="142" y="34" width="36" height="22" rx="6" fill="#D5D0C8" />
+            <rect x="154" y="23" width="12" height="15" rx="4" fill="#C8C3BB" />
+            <circle cx="72" cy="268" r="38" fill="#CFF03E" opacity=".18" />
+            <circle cx="256" cy="74" r="26" fill="#7C5BFF" opacity=".08" />
+          </svg>
+        )}
       </div>
 
       <div className="card__identity">
@@ -137,6 +148,16 @@ function ProductCard({ product, rank }) {
 
       <div className="card__bottom">
         <div className="card__cta">
+          {buyHref ? (
+            <a
+              href={buyHref}
+              className="btn btn--primary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Buy on Amazon
+            </a>
+          ) : null}
           <Link href={detailsHref} className="btn btn--secondary">
             Details
           </Link>
