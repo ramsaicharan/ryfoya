@@ -1,8 +1,9 @@
 import Link from 'next/link';
 
 function ProductCard({ product, rank }) {
-  const bannerClass = rank === 2 ? 'banner--purple' : 'banner--lime';
-  const skinPillClass = rank === 2 ? 'skin-tag-pill--purple' : 'skin-tag-pill--lime';
+  const isEven = rank % 2 === 0;
+  const bannerClass = isEven ? 'banner--purple' : 'banner--lime';
+  const skinPillClass = isEven ? 'skin-tag-pill--purple' : 'skin-tag-pill--lime';
   const rawScore = Number(product.score) || 0;
   const matchPercent = Math.max(0, Math.min(100, Math.round(rawScore <= 10 ? rawScore * 10 : rawScore)));
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();

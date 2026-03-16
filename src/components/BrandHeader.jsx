@@ -1,6 +1,6 @@
 function BrandHeader() {
   return (
-    <div className="site-nav">
+    <div className="site-nav h-10">
       <div className="wrap site-nav__inner">
         <a className="brand-logo" href="/">
           <img className="brand-logo__image" src="/ryfoya-logo.png" alt="Ryfoya" />

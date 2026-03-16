@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
+import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
 import { fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
@@ -43,18 +44,6 @@ function getRiskMetricStatus(score) {
   }
 
   if (score === 3) {
-    return 'warning';
-  }
-
-  return 'bad';
-}
-
-function getMatchStatus(matchPercent) {
-  if (matchPercent > 80) {
-    return 'good';
-  }
-
-  if (matchPercent >= 50) {
     return 'warning';
   }
 
@@ -252,71 +241,7 @@ export default async function SunscreenDetailPage({ params }) {
             <section className="detail-block">
               <h2 className="detail-block__title">Skin Type Match</h2>
               {topMatches.length > 0 ? (
-                <div className="skin-tabs">
-                  {topMatches.map((match, index) => (
-                    <div key={match.id} className="skin-tab">
-                      <input
-                        className="skin-tab__input"
-                        type="radio"
-                        name="skin-match"
-                        id={`skin-match-${match.id}`}
-                        defaultChecked={index === 0}
-                      />
-                      <label className="skin-tab__label" htmlFor={`skin-match-${match.id}`}>
-                        {match.tabLabel}
-                      </label>
-                      <div className={`skin-tab__panel skin-tab__panel--${getMatchStatus(match.matchPercent)}`}>
-                        <div className="skin-tab__panel-top">
-                          <div className="skin-tab__ring">
-                            <svg className="skin-tab__ring-svg" viewBox="0 0 36 36" aria-hidden="true">
-                              <path
-                                className="skin-tab__ring-track"
-                                strokeWidth="4"
-                                fill="none"
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                              />
-                              <path
-                                className={`skin-tab__ring-fill skin-tab__ring-fill--${getMatchStatus(match.matchPercent)}`}
-                                strokeWidth="4"
-                                strokeDasharray={`${match.matchPercent}, 100`}
-                                strokeLinecap="round"
-                                fill="none"
-                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                              />
-                            </svg>
-                            <span className="skin-tab__ring-text">{match.matchPercent}%</span>
-                          </div>
-                          <p className="skin-tab__quote">"{match.labels.join(' · ')}"</p>
-                        </div>
-
-                        <div className="skin-tab__lists">
-                          <div>
-                            <div className="skin-tab__list-title skin-tab__list-title--pro">Pros</div>
-                            <ul className="skin-tab__list">
-                              {match.pros.map((pro, idx) => (
-                                <li key={`${match.id}-pro-${idx}`}>{pro}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <div className="skin-tab__list-title skin-tab__list-title--con">Cons</div>
-                            <ul className="skin-tab__list">
-                              {match.cons.map((con, idx) => (
-                                <li key={`${match.id}-con-${idx}`}>{con}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-
-                        {match.pageSlug ? (
-                          <Link href={`/${match.pageSlug}`} className="skin-tab__link">
-                            View skin-context page
-                          </Link>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <SkinMatchTabs matches={topMatches} />
               ) : (
                 <div className="detail-empty-state">No persona-specific skin match data is available yet.</div>
               )}
@@ -410,4 +335,3 @@ export default async function SunscreenDetailPage({ params }) {
     </div>
   );
 }
-
