@@ -209,6 +209,17 @@ export default async function SunscreenDetailPage({ params }) {
             <hr className="detail-divider" />
 
             <section className="detail-block">
+              <h2 className="detail-block__title">Skin Type Match</h2>
+              {topMatches.length > 0 ? (
+                <SkinMatchTabs matches={topMatches} />
+              ) : (
+                <div className="detail-empty-state">No persona-specific skin match data is available yet.</div>
+              )}
+            </section>
+
+            <hr className="detail-divider" />
+
+            <section className="detail-block">
               <h2 className="detail-block__title">Performance Scores</h2>
               <div className="detail-factors">
                 {performanceFactors.map((factor) => (
@@ -236,16 +247,7 @@ export default async function SunscreenDetailPage({ params }) {
               </div>
             </section>
 
-            <hr className="detail-divider" />
-
-            <section className="detail-block">
-              <h2 className="detail-block__title">Skin Type Match</h2>
-              {topMatches.length > 0 ? (
-                <SkinMatchTabs matches={topMatches} />
-              ) : (
-                <div className="detail-empty-state">No persona-specific skin match data is available yet.</div>
-              )}
-            </section>
+            
 
             <hr className="detail-divider" />
 

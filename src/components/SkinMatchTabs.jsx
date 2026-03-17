@@ -65,7 +65,7 @@ export default function SkinMatchTabs({ matches }) {
             </svg>
             <span className="skin-tab__ring-text">{activeMatch.matchPercent}%</span>
           </div>
-          <p className="skin-tab__quote">"{activeMatch.labels.join(' · ')}"</p>
+          <p className="skin-tab__quote">{activeMatch.labels.join(' · ')}</p>
         </div>
 
         <div className="skin-tab__lists">
