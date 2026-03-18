@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 function splitIntoColumns(items, columnCount) {
   const columns = [];
 
@@ -17,7 +19,7 @@ function getSkinContextLabel(page) {
 }
 
 function Footer({ pages }) {
-  const skinContextPages = pages.filter((page) => page.page_slug).slice(0, 12);
+  const skinContextPages = pages.filter((page) => page.page_slug).slice(0, 8);
   const columns = splitIntoColumns(skinContextPages, 4);
 
   return (
@@ -49,6 +51,32 @@ function Footer({ pages }) {
               </ul>
             ))}
           </div>
+        </div>
+
+        <div className="site-footer__more">
+          <h4 className="site-footer__heading">More</h4>
+          <ul className="site-footer__list">
+            <li>
+              <Link className="site-footer__link" href="/sunscreens">
+                Sunscreens
+              </Link>
+            </li>
+            <li>
+              <Link className="site-footer__link" href="/how-it-works">
+                How It Works
+              </Link>
+            </li>
+            <li>
+              <Link className="site-footer__link" href="/about">
+                About Us
+              </Link>
+            </li>
+            <li>
+              <Link className="site-footer__link" href="/legal">
+                Legal & Disclaimer
+              </Link>
+            </li>
+          </ul>
         </div>
       </div>
 
