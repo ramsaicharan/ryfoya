@@ -1,7 +1,13 @@
 import { notFound } from 'next/navigation';
 import Header from '../../src/components/Header';
+import PersonaChoiceSidebar from '../../src/components/PersonaChoiceSidebar';
 import ProductCard from '../../src/components/ProductCard';
-import { fetchPageData, fetchPersonaBySlug, getPersonaMetadata } from '../../src/lib/site-data';
+import {
+  fetchAllPersonas,
+  fetchPageData,
+  fetchPersonaBySlug,
+  getPersonaMetadata
+} from '../../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +26,7 @@ export async function generateMetadata({ params }) {
 
 export default async function PersonaPage({ params }) {
   const { page_slug } = await params;
-  const pageData = await fetchPageData(page_slug);
+  const [pageData, personas] = await Promise.all([fetchPageData(page_slug), fetchAllPersonas()]);
 
   if (!pageData) {
     notFound();
@@ -31,16 +37,23 @@ export default async function PersonaPage({ params }) {
   return (
     <>
       <Header persona={persona} formulasReviewed={formulasReviewed} />
-      <main className="wrap">
-        {products.length > 0 ? (
-          <div className="card-grid">
-            {products.map((product, index) => (
-              <ProductCard key={product.id || `${product.productName}-${index}`} product={product} rank={index + 1} />
-            ))}
-          </div>
-        ) : (
-          <p style={{ padding: '40px 0' }}>No products matched this page persona.</p>
-        )}
+      <main className="listing-layout listing-layout--full">
+        <PersonaChoiceSidebar pages={personas} currentPersona={persona} />
+        <div className="listing-content">
+          {products.length > 0 ? (
+            <div className="card-grid">
+              {products.map((product, index) => (
+                <ProductCard
+                  key={product.id || `${product.productName}-${index}`}
+                  product={product}
+                  rank={index + 1}
+                />
+              ))}
+            </div>
+          ) : (
+            <p style={{ padding: '40px 0' }}>No products matched this page persona.</p>
+          )}
+        </div>
       </main>
     </>
   );
