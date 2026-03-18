@@ -442,27 +442,38 @@ async function fetchProductBySlug(productSlug) {
   return data?.[0] || null;
 }
 
-async function fetchProductSkinMatches(productId) {
+async function fetchProductSkinMatches(productId, contextPageSlug = '') {
   const supabase = getSupabaseServerClient();
+  let contextPersonaId = '';
+
+  if (contextPageSlug) {
+    const contextPersona = await fetchPersonaBySlug(contextPageSlug).catch(() => null);
+    contextPersonaId = contextPersona?.id || '';
+  }
+
+  const personaIds = contextPersonaId
+    ? [...new Set([contextPersonaId, ...SKIN_CONTEXT_PERSONA_IDS])]
+    : SKIN_CONTEXT_PERSONA_IDS;
+
   const { data: rows, error } = await supabase
     .from('product_skin_scores')
     .select('id, product_id, persona_id, score, labels, pros, cons')
     .eq('product_id', productId)
-    .in('persona_id', SKIN_CONTEXT_PERSONA_IDS)
+    .in('persona_id', personaIds)
     .order('score', { ascending: false });
 
   if (error) {
     throw new Error(`Could not load product skin matches: ${error.message}`);
   }
 
-  const personaIds = [...new Set((rows || []).map((row) => row.persona_id).filter(Boolean))];
+  const resultPersonaIds = [...new Set((rows || []).map((row) => row.persona_id).filter(Boolean))];
   let personaMap = new Map();
 
-  if (personaIds.length > 0) {
+  if (resultPersonaIds.length > 0) {
     const { data: personas, error: personasError } = await supabase
       .from('target_personas')
       .select('id, page_slug, page_title, skin_type, skin_condition, age, skin_tone')
-      .in('id', personaIds);
+      .in('id', resultPersonaIds);
 
     if (personasError) {
       throw new Error(`Could not load product personas: ${personasError.message}`);
@@ -491,6 +502,15 @@ async function fetchProductSkinMatches(productId) {
       };
     })
     .sort((left, right) => {
+      if (contextPersonaId) {
+        const leftIsContext = left.personaId === contextPersonaId ? 1 : 0;
+        const rightIsContext = right.personaId === contextPersonaId ? 1 : 0;
+
+        if (leftIsContext !== rightIsContext) {
+          return rightIsContext - leftIsContext;
+        }
+      }
+
       const leftOrder = SKIN_CONTEXT_PERSONA_ORDER.get(left.personaId) ?? Number.MAX_SAFE_INTEGER;
       const rightOrder = SKIN_CONTEXT_PERSONA_ORDER.get(right.personaId) ?? Number.MAX_SAFE_INTEGER;
       return leftOrder - rightOrder;
@@ -571,7 +591,7 @@ async function fetchProductEvaluations(productId) {
   }, {});
 }
 
-export async function fetchProductDetailPageData(productSlug) {
+export async function fetchProductDetailPageData(productSlug, contextPageSlug = '') {
   const productRow = await fetchProductBySlug(productSlug);
 
   if (!productRow) {
@@ -581,7 +601,7 @@ export async function fetchProductDetailPageData(productSlug) {
   const resolvedProductId = productRow.id;
 
   const [skinMatchesResult, ingredientsResult, evaluationsResult] = await Promise.allSettled([
-    fetchProductSkinMatches(resolvedProductId),
+    fetchProductSkinMatches(resolvedProductId, contextPageSlug),
     fetchProductIngredients(resolvedProductId),
     fetchProductEvaluations(resolvedProductId)
   ]);

@@ -7,7 +7,9 @@ function ProductCard({ product, rank }) {
   const rawScore = Number(product.score) || 0;
   const matchPercent = Math.max(0, Math.min(100, Math.round(rawScore <= 10 ? rawScore * 10 : rawScore)));
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
-  const detailsHref = product.productSlug ? `/sunscreens/${product.productSlug}` : '/sunscreens';
+  const detailsHref = product.productSlug
+    ? `/sunscreens/${product.productSlug}${product.contextPageSlug ? `?context=${encodeURIComponent(product.contextPageSlug)}` : ''}`
+    : '/sunscreens';
   const buyHref = product.productBuyLink || '';
   const firstImage = product.imageLinks?.[0] || '';
 

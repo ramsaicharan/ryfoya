@@ -132,9 +132,11 @@ export async function generateMetadata({ params }) {
   return getProductMetadata(pageData.product);
 }
 
-export default async function SunscreenDetailPage({ params }) {
+export default async function SunscreenDetailPage({ params, searchParams }) {
   const { slug } = await params;
-  const pageData = await fetchProductDetailPageData(slug);
+  const resolvedSearchParams = await searchParams;
+  const contextPageSlug = String(resolvedSearchParams?.context || '').trim();
+  const pageData = await fetchProductDetailPageData(slug, contextPageSlug);
 
   if (!pageData) {
     notFound();

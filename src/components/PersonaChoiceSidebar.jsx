@@ -21,6 +21,37 @@ function getSelection(persona) {
   }, {});
 }
 
+function normalizeSensitiveSelection(selection) {
+  const skinType = normalizeValue(selection.skin_type);
+  const skinCondition = normalizeValue(selection.skin_condition);
+  const age = normalizeValue(selection.age);
+  const skinTone = normalizeValue(selection.skin_tone);
+  const hasOtherSelections = Boolean(age || skinTone);
+  const isSensitiveOnlyInSkinType =
+    skinType === 'Sensitive' && !skinCondition && !hasOtherSelections;
+  const isSensitiveOnlyInSkinCondition =
+    skinCondition === 'Sensitive' && !skinType && !hasOtherSelections;
+
+  if (isSensitiveOnlyInSkinType || isSensitiveOnlyInSkinCondition) {
+    return {
+      ...selection,
+      skin_type: '',
+      skin_condition: 'Sensitive'
+    };
+  }
+
+  return selection;
+}
+
+function isSensitiveOnlyFallbackSelection(selection) {
+  return (
+    !normalizeValue(selection.skin_type)
+    && normalizeValue(selection.skin_condition) === 'Sensitive'
+    && !normalizeValue(selection.age)
+    && !normalizeValue(selection.skin_tone)
+  );
+}
+
 function isSelectionEmpty(selection) {
   return FILTER_GROUPS.every((group) => !normalizeValue(selection[group.key]));
 }
@@ -123,12 +154,51 @@ function findBestFallbackPersona(pages, selection) {
   })[0];
 }
 
+function buildCounterpartSelection(selection, fromKey, toKey) {
+  const value = normalizeValue(selection[fromKey]);
+
+  if (!value) {
+    return null;
+  }
+
+  const nextSelection = { ...selection, [fromKey]: '', [toKey]: value };
+  return nextSelection;
+}
+
+function findCounterpartPersona(pages, selection) {
+  const filledGroups = FILTER_GROUPS.filter((group) => normalizeValue(selection[group.key]));
+
+  if (filledGroups.length !== 1) {
+    return null;
+  }
+
+  const onlyGroup = filledGroups[0].key;
+
+  if (onlyGroup === 'skin_type') {
+    const counterpartSelection = buildCounterpartSelection(selection, 'skin_type', 'skin_condition');
+    return counterpartSelection ? findExactPersona(pages, counterpartSelection) : null;
+  }
+
+  if (onlyGroup === 'skin_condition') {
+    const counterpartSelection = buildCounterpartSelection(selection, 'skin_condition', 'skin_type');
+    return counterpartSelection ? findExactPersona(pages, counterpartSelection) : null;
+  }
+
+  return null;
+}
+
 function getSelectionHref(pages, selection) {
-  if (isSelectionEmpty(selection)) {
+  const normalizedSelection = normalizeSensitiveSelection(selection);
+
+  if (isSelectionEmpty(normalizedSelection)) {
     return '/sunscreens';
   }
 
-  const persona = findExactPersona(pages, selection) || findBestFallbackPersona(pages, selection);
+  const persona =
+    findExactPersona(pages, normalizedSelection)
+    || findBestFallbackPersona(pages, normalizedSelection)
+    || findCounterpartPersona(pages, normalizedSelection);
+
   return persona?.page_slug ? `/${persona.page_slug}` : '/sunscreens';
 }
 
@@ -145,6 +215,34 @@ function formatOptionLabel(groupKey, value) {
   return safeValue;
 }
 
+function buildNextSelection(selection, groupKey, value) {
+  const normalizedValue = normalizeValue(value);
+
+  if (isSensitiveOnlyFallbackSelection(selection)) {
+    if (groupKey === 'skin_condition' && normalizedValue && normalizedValue !== 'Sensitive') {
+      return {
+        ...selection,
+        skin_type: 'Sensitive',
+        skin_condition: normalizedValue
+      };
+    }
+
+    if (groupKey === 'age' || groupKey === 'skin_tone') {
+      return {
+        ...selection,
+        skin_type: 'Sensitive',
+        skin_condition: '',
+        [groupKey]: normalizedValue
+      };
+    }
+  }
+
+  return {
+    ...selection,
+    [groupKey]: normalizedValue
+  };
+}
+
 function buildGroupOptions(pages, selection, groupKey) {
   const values = [];
   const seen = new Set();
@@ -159,7 +257,7 @@ function buildGroupOptions(pages, selection, groupKey) {
       continue;
     }
 
-    const nextSelection = { ...selection, [groupKey]: value };
+    const nextSelection = buildNextSelection(selection, groupKey, value);
     const href = getSelectionHref(pages, nextSelection);
 
     seen.add(value);

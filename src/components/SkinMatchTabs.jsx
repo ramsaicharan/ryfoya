@@ -15,6 +15,20 @@ function getMatchStatus(matchPercent) {
   return 'bad';
 }
 
+function getSkinContextCta(match) {
+  const pageTitle = String(match?.pageTitle || '').trim();
+  const tabLabel = String(match?.tabLabel || '').trim();
+  const contextLabel = String(match?.contextLabel || '').trim();
+
+  const descriptor =
+    pageTitle.replace(/^Best Sunscreens for\s+/i, '').trim()
+    || tabLabel
+    || contextLabel
+    || 'this skin context';
+
+  return `View other sunscreens for ${descriptor}`;
+}
+
 export default function SkinMatchTabs({ matches }) {
   const safeMatches = useMemo(() => matches || [], [matches]);
   const [activeId, setActiveId] = useState(safeMatches[0]?.id || '');
@@ -89,7 +103,7 @@ export default function SkinMatchTabs({ matches }) {
 
         {activeMatch.pageSlug ? (
           <Link href={`/${activeMatch.pageSlug}`} className="skin-tab__link">
-            View skin-context page
+            {getSkinContextCta(activeMatch)}
           </Link>
         ) : null}
       </div>

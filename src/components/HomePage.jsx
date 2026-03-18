@@ -84,7 +84,7 @@ function HomePage({ pages }) {
             <span className="category-card__glow" />
             <SunIcon />
             <div className="category-card__content">
-              <h3 className="category-card__title">Sunscreen</h3>
+              <h3 className="category-card__title">Sunscreens</h3>
               <p className="category-card__meta">Protect &amp; Prevent</p>
               <span className="category-card__action">
                 Compare <ArrowIcon />

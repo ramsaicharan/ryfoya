@@ -45,7 +45,7 @@ export default async function PersonaPage({ params }) {
               {products.map((product, index) => (
                 <ProductCard
                   key={product.id || `${product.productName}-${index}`}
-                  product={product}
+                  product={{ ...product, contextPageSlug: persona.page_slug }}
                   rank={index + 1}
                 />
               ))}
