@@ -143,7 +143,7 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
   }
 
   const { product, evaluations, skinMatches, activeIngredients, inactiveIngredients } = pageData;
-  const topMatches = skinMatches.slice(0, 4);
+  const topMatches = skinMatches;
   const performanceFactors = buildPerformanceFactors(evaluations);
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
   const galleryImages = product.imageLinks || [];
