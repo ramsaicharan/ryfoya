@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 import { getSupabaseServerClient } from './supabaseServer';
 
 const SITE_NAME = 'Ryfoya';
@@ -14,6 +15,10 @@ const SKIN_CONTEXT_PERSONA_IDS = [
 const SKIN_CONTEXT_PERSONA_ORDER = new Map(
   SKIN_CONTEXT_PERSONA_IDS.map((personaId, index) => [personaId, index])
 );
+const PERSONAS_REVALIDATE = 3600;
+const LISTINGS_REVALIDATE = 900;
+const PRODUCT_REVALIDATE = 1800;
+const DEFAULT_PRODUCTS_PER_PAGE = 24;
 
 function seededPrice(seed) {
   const value = String(seed || 'fallback-seed');
@@ -219,6 +224,30 @@ function getPersonaTabLabel(persona) {
   return buildPersonaContext(persona);
 }
 
+function normalizePageNumber(value) {
+  const page = Number.parseInt(String(value || '1'), 10);
+  return Number.isFinite(page) && page > 0 ? page : 1;
+}
+
+function normalizePageSize(value) {
+  const pageSize = Number.parseInt(String(value || DEFAULT_PRODUCTS_PER_PAGE), 10);
+  return Number.isFinite(pageSize) && pageSize > 0 ? pageSize : DEFAULT_PRODUCTS_PER_PAGE;
+}
+
+function buildPaginationData(totalCount, currentPage, pageSize) {
+  const safePageSize = normalizePageSize(pageSize);
+  const safeTotalCount = Math.max(0, Number(totalCount) || 0);
+  const totalPages = Math.max(1, Math.ceil(safeTotalCount / safePageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  return {
+    totalCount: safeTotalCount,
+    totalPages,
+    currentPage: safeCurrentPage,
+    pageSize: safePageSize
+  };
+}
+
 export function normalizeRow(row, persona) {
   const relationProduct = row.product ?? row.products ?? null;
   const product = Array.isArray(relationProduct) ? relationProduct[0] : relationProduct;
@@ -282,115 +311,208 @@ export function normalizeOverallProduct(product) {
   };
 }
 
+const fetchAllPersonasCached = unstable_cache(
+  async () => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('target_personas')
+      .select('id, page_slug, page_title, created_at, skin_type, skin_condition, age, skin_tone')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error(`Could not load personas: ${error.message}`);
+    }
+
+    return data || [];
+  },
+  ['all-personas'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['personas'] }
+);
+
 export async function fetchAllPersonas() {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('target_personas')
-    .select(
-      'id, page_slug, page_title, page_description, meta_description, created_at, skin_type, skin_condition, age, skin_tone'
-    )
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    throw new Error(`Could not load homepage links: ${error.message}`);
-  }
-
-  return data || [];
+  return fetchAllPersonasCached();
 }
+
+const fetchPersonaBySlugCached = unstable_cache(
+  async (pageSlug) => {
+    const supabase = getSupabaseServerClient();
+    const { data: personaRows, error } = await supabase
+      .from('target_personas')
+      .select(
+        'id, skin_type, skin_condition, age, skin_tone, page_title, page_description, meta_description, page_slug'
+      )
+      .eq('page_slug', pageSlug)
+      .limit(2);
+
+    if (error) {
+      throw new Error(`Could not load page persona: ${error.message}`);
+    }
+
+    if (!personaRows || personaRows.length === 0) {
+      return null;
+    }
+
+    if (personaRows.length > 1) {
+      throw new Error(`Multiple target_personas rows found for page_slug "${pageSlug}". Make page_slug unique.`);
+    }
+
+    return personaRows[0];
+  },
+  ['persona-by-slug'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['personas'] }
+);
 
 export async function fetchPersonaBySlug(pageSlug) {
-  const supabase = getSupabaseServerClient();
-  const { data: personaRows, error } = await supabase
-    .from('target_personas')
-    .select(
-      'id, skin_type, skin_condition, age, skin_tone, page_title, page_description, meta_description, page_slug'
-    )
-    .eq('page_slug', pageSlug)
-    .limit(2);
+  const safeSlug = String(pageSlug || '').trim();
 
-  if (error) {
-    throw new Error(`Could not load page persona: ${error.message}`);
-  }
-
-  if (!personaRows || personaRows.length === 0) {
+  if (!safeSlug) {
     return null;
   }
 
-  if (personaRows.length > 1) {
-    throw new Error(`Multiple target_personas rows found for page_slug "${pageSlug}". Make page_slug unique.`);
-  }
-
-  return personaRows[0];
+  return fetchPersonaBySlugCached(safeSlug);
 }
 
-export async function fetchProductsForPersona(personaId) {
-  const supabase = getSupabaseServerClient();
-  const baseSelect = 'id, product_id, persona_id, score, labels, pros, cons';
-  const productFields =
-    'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
-  const selectWithNamedFk = `${baseSelect}, product:products!product_skin_scores_product_id_fkey(${productFields})`;
-  const selectWithDefaultRelation = `${baseSelect}, products(${productFields})`;
+const fetchProductsForPersonaPageCached = unstable_cache(
+  async (personaId, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
+    const currentPage = normalizePageNumber(requestedPage);
+    const pageSize = normalizePageSize(requestedPageSize);
+    const supabase = getSupabaseServerClient();
+    const baseSelect = 'id, product_id, persona_id, score, labels, pros, cons';
+    const productFields =
+      'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
+    const selectWithNamedFk = `${baseSelect}, product:products!product_skin_scores_product_id_fkey(${productFields})`;
+    const selectWithDefaultRelation = `${baseSelect}, products(${productFields})`;
 
-  let result = await supabase
-    .from('product_skin_scores')
-    .select(selectWithNamedFk)
-    .eq('persona_id', personaId)
-    .order('score', { ascending: false });
-
-  if (result.error) {
-    result = await supabase
+    const { count, error: countError } = await supabase
       .from('product_skin_scores')
-      .select(selectWithDefaultRelation)
+      .select('id', { count: 'exact', head: true })
+      .eq('persona_id', personaId);
+
+    if (countError) {
+      throw new Error(`Could not count persona products: ${countError.message}`);
+    }
+
+    const pagination = buildPaginationData(count, currentPage, pageSize);
+    const from = (pagination.currentPage - 1) * pagination.pageSize;
+    const to = from + pagination.pageSize - 1;
+
+    let result = await supabase
+      .from('product_skin_scores')
+      .select(selectWithNamedFk)
       .eq('persona_id', personaId)
-      .order('score', { ascending: false });
-  }
+      .order('score', { ascending: false })
+      .range(from, to);
 
-  if (result.error) {
-    throw new Error(`Could not load products: ${result.error.message}`);
-  }
+    if (result.error) {
+      result = await supabase
+        .from('product_skin_scores')
+        .select(selectWithDefaultRelation)
+        .eq('persona_id', personaId)
+        .order('score', { ascending: false })
+        .range(from, to);
+    }
 
-  return result.data || [];
-}
+    if (result.error) {
+      throw new Error(`Could not load products: ${result.error.message}`);
+    }
 
-export async function fetchPageData(pageSlug) {
-  const persona = await fetchPersonaBySlug(pageSlug);
+    return {
+      rows: result.data || [],
+      ...pagination
+    };
+  },
+  ['products-for-persona-page'],
+  { revalidate: LISTINGS_REVALIDATE, tags: ['persona-products'] }
+);
 
-  if (!persona) {
+const fetchPageDataCached = unstable_cache(
+  async (pageSlug, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
+    const persona = await fetchPersonaBySlug(pageSlug);
+
+    if (!persona) {
+      return null;
+    }
+
+    const result = await fetchProductsForPersonaPageCached(persona.id, requestedPage, requestedPageSize);
+    const products = result.rows.map((row) => normalizeRow(row, persona)).sort((a, b) => b.score - a.score);
+    const formulasReviewed = result.totalCount || new Set(products.map((item) => item.productId || item.id)).size || 48;
+
+    return {
+      persona,
+      products,
+      formulasReviewed,
+      totalCount: result.totalCount,
+      totalPages: result.totalPages,
+      currentPage: result.currentPage,
+      pageSize: result.pageSize
+    };
+  },
+  ['page-data'],
+  { revalidate: LISTINGS_REVALIDATE, tags: ['persona-pages'] }
+);
+
+export async function fetchPageData(pageSlug, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) {
+  const safeSlug = String(pageSlug || '').trim();
+
+  if (!safeSlug) {
     return null;
   }
 
-  const rows = await fetchProductsForPersona(persona.id);
-  const products = rows.map((row) => normalizeRow(row, persona)).sort((a, b) => b.score - a.score);
-  const formulasReviewed = new Set(products.map((item) => item.productId || item.id)).size || 48;
-
-  return {
-    persona,
-    products,
-    formulasReviewed
-  };
+  return fetchPageDataCached(safeSlug, normalizePageNumber(requestedPage), normalizePageSize(requestedPageSize));
 }
 
-export async function fetchOverallSunscreens() {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('products')
-    .select(
-      'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons, image_links'
-    )
-    .not('overall_score', 'is', null)
-    .order('overall_score', { ascending: false });
+const fetchOverallSunscreensCached = unstable_cache(
+  async (requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
+    const currentPage = normalizePageNumber(requestedPage);
+    const pageSize = normalizePageSize(requestedPageSize);
+    const supabase = getSupabaseServerClient();
+    const { count, error: countError } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .not('overall_score', 'is', null);
 
-  if (error) {
-    throw new Error(`Could not load overall sunscreens: ${error.message}`);
-  }
+    if (countError) {
+      throw new Error(`Could not count overall sunscreens: ${countError.message}`);
+    }
 
-  const products = (data || []).map(normalizeOverallProduct);
-  const formulasReviewed = products.length || 48;
+    const pagination = buildPaginationData(count, currentPage, pageSize);
+    const from = (pagination.currentPage - 1) * pagination.pageSize;
+    const to = from + pagination.pageSize - 1;
 
-  return {
-    products,
-    formulasReviewed
-  };
+    const { data, error } = await supabase
+      .from('products')
+      .select(
+        'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons, image_links'
+      )
+      .not('overall_score', 'is', null)
+      .order('overall_score', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(`Could not load overall sunscreens: ${error.message}`);
+    }
+
+    const products = (data || []).map(normalizeOverallProduct);
+    const formulasReviewed = pagination.totalCount || products.length || 48;
+
+    return {
+      products,
+      formulasReviewed,
+      totalCount: pagination.totalCount,
+      totalPages: pagination.totalPages,
+      currentPage: pagination.currentPage,
+      pageSize: pagination.pageSize
+    };
+  },
+  ['overall-sunscreens'],
+  { revalidate: LISTINGS_REVALIDATE, tags: ['overall-sunscreens'] }
+);
+
+export async function fetchOverallSunscreens(requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) {
+  return fetchOverallSunscreensCached(
+    normalizePageNumber(requestedPage),
+    normalizePageSize(requestedPageSize)
+  );
 }
 
 function normalizeProductDetail(product) {
@@ -425,64 +547,71 @@ function normalizeProductDetail(product) {
   };
 }
 
-async function fetchProductBySlug(productSlug) {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('products')
-    .select(
-      'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, total_ingredients, sweat_resistance, ph_value, filter_type, product_format, eco_reef_safety, nano_status, vegan, cruelty_free, overall_score, overall_pros, overall_cons, image_links'
-    )
-    .eq('slug', productSlug)
-    .limit(1);
+const fetchProductBySlugCached = unstable_cache(
+  async (productSlug) => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('products')
+      .select(
+        'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, total_ingredients, sweat_resistance, ph_value, filter_type, product_format, eco_reef_safety, nano_status, vegan, cruelty_free, overall_score, overall_pros, overall_cons, image_links, created_at'
+      )
+      .eq('slug', productSlug)
+      .limit(1);
 
-  if (error) {
-    throw new Error(`Could not load product detail: ${error.message}`);
-  }
-
-  return data?.[0] || null;
-}
-
-async function fetchProductSkinMatches(productId, contextPageSlug = '') {
-  const supabase = getSupabaseServerClient();
-  let contextPersonaId = '';
-
-  if (contextPageSlug) {
-    const contextPersona = await fetchPersonaBySlug(contextPageSlug).catch(() => null);
-    contextPersonaId = contextPersona?.id || '';
-  }
-
-  const personaIds = contextPersonaId
-    ? [...new Set([contextPersonaId, ...SKIN_CONTEXT_PERSONA_IDS])]
-    : SKIN_CONTEXT_PERSONA_IDS;
-
-  const { data: rows, error } = await supabase
-    .from('product_skin_scores')
-    .select('id, product_id, persona_id, score, labels, pros, cons')
-    .eq('product_id', productId)
-    .in('persona_id', personaIds)
-    .order('score', { ascending: false });
-
-  if (error) {
-    throw new Error(`Could not load product skin matches: ${error.message}`);
-  }
-
-  const resultPersonaIds = [...new Set((rows || []).map((row) => row.persona_id).filter(Boolean))];
-  let personaMap = new Map();
-
-  if (resultPersonaIds.length > 0) {
-    const { data: personas, error: personasError } = await supabase
-      .from('target_personas')
-      .select('id, page_slug, page_title, skin_type, skin_condition, age, skin_tone')
-      .in('id', resultPersonaIds);
-
-    if (personasError) {
-      throw new Error(`Could not load product personas: ${personasError.message}`);
+    if (error) {
+      throw new Error(`Could not load product detail: ${error.message}`);
     }
 
-    personaMap = new Map((personas || []).map((persona) => [persona.id, persona]));
+    return data?.[0] || null;
+  },
+  ['product-by-slug'],
+  { revalidate: PRODUCT_REVALIDATE, tags: ['products'] }
+);
+
+export async function fetchProductBySlug(productSlug) {
+  const safeSlug = String(productSlug || '').trim();
+
+  if (!safeSlug) {
+    return null;
   }
 
-  return (rows || [])
+  return fetchProductBySlugCached(safeSlug);
+}
+
+const fetchProductSkinScoreRowsCached = unstable_cache(
+  async (productId) => {
+    const supabase = getSupabaseServerClient();
+    const { data: rows, error } = await supabase
+      .from('product_skin_scores')
+      .select('id, product_id, persona_id, score, labels, pros, cons')
+      .eq('product_id', productId)
+      .order('score', { ascending: false });
+
+    if (error) {
+      throw new Error(`Could not load product skin matches: ${error.message}`);
+    }
+
+    return rows || [];
+  },
+  ['product-skin-score-rows'],
+  { revalidate: PRODUCT_REVALIDATE, tags: ['product-skin-scores'] }
+);
+
+async function fetchProductSkinMatches(productId, contextPageSlug = '') {
+  const [rows, personas, contextPersona] = await Promise.all([
+    fetchProductSkinScoreRowsCached(productId),
+    fetchAllPersonas(),
+    contextPageSlug ? fetchPersonaBySlug(contextPageSlug).catch(() => null) : null
+  ]);
+
+  const contextPersonaId = contextPersona?.id || '';
+  const allowedPersonaIds = new Set(
+    contextPersonaId ? [contextPersonaId, ...SKIN_CONTEXT_PERSONA_IDS] : SKIN_CONTEXT_PERSONA_IDS
+  );
+  const personaMap = new Map((personas || []).map((persona) => [persona.id, persona]));
+
+  return rows
+    .filter((row) => allowedPersonaIds.has(row.persona_id))
     .map((row) => {
       const persona = personaMap.get(row.persona_id) || null;
       const score = normalizeScore(row.score);
@@ -517,78 +646,95 @@ async function fetchProductSkinMatches(productId, contextPageSlug = '') {
     });
 }
 
-async function fetchProductIngredients(productId) {
-  const supabase = getSupabaseServerClient();
-  const { data: ingredientRows, error } = await supabase
-    .from('product_ingredients')
-    .select(
-      'id, ingredient_id, raw_ingredient_name, ingredient_position, concentration, is_active, classification_source'
-    )
-    .eq('product_id', productId)
-    .order('ingredient_position', { ascending: true });
+const fetchProductIngredientsCached = unstable_cache(
+  async (productId) => {
+    const supabase = getSupabaseServerClient();
+    const { data: ingredientRows, error } = await supabase
+      .from('product_ingredients')
+      .select(
+        'id, ingredient_id, raw_ingredient_name, ingredient_position, concentration, is_active, classification_source'
+      )
+      .eq('product_id', productId)
+      .order('ingredient_position', { ascending: true });
 
-  if (error) {
-    throw new Error(`Could not load product ingredients: ${error.message}`);
-  }
-
-  const ingredientIds = [...new Set((ingredientRows || []).map((row) => row.ingredient_id).filter(Boolean))];
-  let ingredientMap = new Map();
-
-  if (ingredientIds.length > 0) {
-    const { data: ingredients, error: ingredientsError } = await supabase
-      .from('ingredients')
-      .select('id, common_name, active_analysis, inactive_analysis')
-      .in('id', ingredientIds);
-
-    if (ingredientsError) {
-      throw new Error(`Could not load ingredients metadata: ${ingredientsError.message}`);
+    if (error) {
+      throw new Error(`Could not load product ingredients: ${error.message}`);
     }
 
-    ingredientMap = new Map((ingredients || []).map((ingredient) => [ingredient.id, ingredient]));
-  }
+    const ingredientIds = [...new Set((ingredientRows || []).map((row) => row.ingredient_id).filter(Boolean))];
+    let ingredientMap = new Map();
 
-  return (ingredientRows || []).map((ingredientRow) => {
-    const ingredient = ingredientMap.get(ingredientRow.ingredient_id) || null;
-    const analysis = normalizeAnalysis(
-      ingredientRow.is_active ? ingredient?.active_analysis : ingredient?.inactive_analysis
-    );
-    const flags = normalizeFlags(analysis?.flags);
-    const shortDescription = buildIngredientSummary(analysis, Boolean(ingredientRow.is_active));
-    const detailDescription = buildIngredientDetails(analysis);
+    if (ingredientIds.length > 0) {
+      const { data: ingredients, error: ingredientsError } = await supabase
+        .from('ingredients')
+        .select('id, common_name, active_analysis, inactive_analysis')
+        .in('id', ingredientIds);
 
-    return {
-      id: ingredientRow.id,
-      ingredientId: ingredient?.id || null,
-      name: ingredient?.common_name || ingredientRow.raw_ingredient_name || 'Unnamed ingredient',
-      rawName: ingredientRow.raw_ingredient_name || '',
-      position: ingredientRow.ingredient_position,
-      concentration: ingredientRow.concentration || null,
-      isActive: Boolean(ingredientRow.is_active),
-      source: formatProductValue(ingredientRow.classification_source, ''),
-      shortDescription,
-      detailDescription,
-      flags,
-      isFlagged: flags.length > 0,
-      firstFlagDescription: flags[0]?.description || ''
-    };
-  });
+      if (ingredientsError) {
+        throw new Error(`Could not load ingredients metadata: ${ingredientsError.message}`);
+      }
+
+      ingredientMap = new Map((ingredients || []).map((ingredient) => [ingredient.id, ingredient]));
+    }
+
+    return (ingredientRows || []).map((ingredientRow) => {
+      const ingredient = ingredientMap.get(ingredientRow.ingredient_id) || null;
+      const analysis = normalizeAnalysis(
+        ingredientRow.is_active ? ingredient?.active_analysis : ingredient?.inactive_analysis
+      );
+      const flags = normalizeFlags(analysis?.flags);
+      const shortDescription = buildIngredientSummary(analysis, Boolean(ingredientRow.is_active));
+      const detailDescription = buildIngredientDetails(analysis);
+
+      return {
+        id: ingredientRow.id,
+        ingredientId: ingredient?.id || null,
+        name: ingredient?.common_name || ingredientRow.raw_ingredient_name || 'Unnamed ingredient',
+        rawName: ingredientRow.raw_ingredient_name || '',
+        position: ingredientRow.ingredient_position,
+        concentration: ingredientRow.concentration || null,
+        isActive: Boolean(ingredientRow.is_active),
+        source: formatProductValue(ingredientRow.classification_source, ''),
+        shortDescription,
+        detailDescription,
+        flags,
+        isFlagged: flags.length > 0,
+        firstFlagDescription: flags[0]?.description || ''
+      };
+    });
+  },
+  ['product-ingredients'],
+  { revalidate: PRODUCT_REVALIDATE, tags: ['product-ingredients'] }
+);
+
+async function fetchProductIngredients(productId) {
+  return fetchProductIngredientsCached(productId);
 }
 
+const fetchProductEvaluationsCached = unstable_cache(
+  async (productId) => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('product_evaluations')
+      .select('agent_name, evaluation_data')
+      .eq('product_id', productId)
+      .in('agent_name', ['light_shield', 'skin_safety', 'pore_and_oil', 'function_experience']);
+
+    if (error) {
+      throw new Error(`Could not load product evaluations: ${error.message}`);
+    }
+
+    return (data || []).reduce((accumulator, row) => {
+      accumulator[row.agent_name] = normalizeJsonObject(row.evaluation_data) || {};
+      return accumulator;
+    }, {});
+  },
+  ['product-evaluations'],
+  { revalidate: PRODUCT_REVALIDATE, tags: ['product-evaluations'] }
+);
+
 async function fetchProductEvaluations(productId) {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('product_evaluations')
-    .select('agent_name, evaluation_data')
-    .eq('product_id', productId);
-
-  if (error) {
-    throw new Error(`Could not load product evaluations: ${error.message}`);
-  }
-
-  return (data || []).reduce((accumulator, row) => {
-    accumulator[row.agent_name] = normalizeJsonObject(row.evaluation_data) || {};
-    return accumulator;
-  }, {});
+  return fetchProductEvaluationsCached(productId);
 }
 
 export async function fetchProductDetailPageData(productSlug, contextPageSlug = '') {
@@ -622,19 +768,27 @@ export async function fetchProductDetailPageData(productSlug, contextPageSlug = 
   };
 }
 
+const fetchAllProductRoutesCached = unstable_cache(
+  async () => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('products')
+      .select('slug, created_at')
+      .not('slug', 'is', null)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error(`Could not load product routes: ${error.message}`);
+    }
+
+    return data || [];
+  },
+  ['all-product-routes'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['products'] }
+);
+
 export async function fetchAllProductRoutes() {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('products')
-    .select('slug, created_at')
-    .not('slug', 'is', null)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    throw new Error(`Could not load product routes: ${error.message}`);
-  }
-
-  return data || [];
+  return fetchAllProductRoutesCached();
 }
 
 export function getDefaultMetadata() {
@@ -722,18 +876,25 @@ export function getSunscreensMetadata() {
 }
 
 export function getProductMetadata(product) {
-
+  const brandName = product?.brandName || product?.brand_name || '';
+  const productName = product?.productName || product?.product_name || '';
+  const productSlug = product?.productSlug || product?.slug || '';
+  const overallPros = Array.isArray(product?.overallPros)
+    ? product.overallPros
+    : Array.isArray(product?.overall_pros)
+      ? product.overall_pros
+      : [];
   const fullName =
-  product?.brandName && product?.productName
-    ? `${product.brandName} ${product.productName}${product?.spf ? ` SPF ${product.spf}` : ''}`
-    : product?.productName
-      ? `${product.productName}${product?.spf ? ` SPF ${product.spf}` : ''}`
+  brandName && productName
+    ? `${brandName} ${productName}`
+    : productName
+      ? `${productName}`
       : '';
   const title = fullName ? `${fullName} | Ryfoya` : 'Sunscreen Details | Ryfoya';
   const description =
-    product?.overallPros?.[0] ||
+    overallPros[0] ||
     'Detailed sunscreen breakdown covering formula facts, skin-context matches, and ingredient data.';
-  const pathname = product?.productSlug ? `/sunscreens/${product.productSlug}` : '/sunscreens';
+  const pathname = productSlug ? `/sunscreens/${productSlug}` : '/sunscreens';
 
   return {
     title,

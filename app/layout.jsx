@@ -5,10 +5,22 @@ import { fetchAllPersonas, getDefaultMetadata } from '../src/lib/site-data';
 import '../src/styles.css';
 
 export const metadata = getDefaultMetadata();
+export const revalidate = 3600;
 const GA_MEASUREMENT_ID = 'G-WWN3SR559Q';
 
 export default async function RootLayout({ children }) {
-  const pages = await fetchAllPersonas().catch(() => []);
+  const pages = await fetchAllPersonas()
+    .then((rows) =>
+      rows.map((page) => ({
+        id: page.id,
+        page_slug: page.page_slug,
+        skin_type: page.skin_type,
+        skin_condition: page.skin_condition,
+        age: page.age,
+        skin_tone: page.skin_tone
+      }))
+    )
+    .catch(() => []);
 
   return (
     <html lang="en">

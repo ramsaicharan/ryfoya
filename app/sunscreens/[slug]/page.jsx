@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
-import { fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
+import { fetchProductBySlug, fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,15 +121,15 @@ function buildIngredientDetail(ingredient) {
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const pageData = await fetchProductDetailPageData(slug);
+  const product = await fetchProductBySlug(slug);
 
-  if (!pageData) {
+  if (!product) {
     return {
       title: 'Product Not Found'
     };
   }
 
-  return getProductMetadata(pageData.product);
+  return getProductMetadata(product);
 }
 
 export default async function SunscreenDetailPage({ params, searchParams }) {

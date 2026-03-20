@@ -1,9 +1,7 @@
 import HomePage from '../src/components/HomePage';
-import { fetchAllPersonas } from '../src/lib/site-data';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default async function Page() {
-  const pages = await fetchAllPersonas();
-  return <HomePage pages={pages} />;
+  return <HomePage />;
 }
