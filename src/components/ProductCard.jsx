@@ -22,7 +22,7 @@ function ProductCard({ product, rank }) {
         <span className="banner__match">⚡ {matchPercent}% Match</span>
       </div>
 
-      <div className="card__img">
+      <Link href={detailsHref} className="card__img">
         {firstImage ? (
           <img
             className="card__img-photo"
@@ -88,12 +88,12 @@ function ProductCard({ product, rank }) {
             <circle cx="256" cy="74" r="26" fill="#7C5BFF" opacity=".08" />
           </svg>
         )}
-      </div>
+      </Link>
 
-      <div className="card__identity">
+      <Link href={detailsHref} className="card__identity">
         <span className="card__brand">{product.brandName}</span>
         <h2 className="card__title">{product.productName}</h2>
-      </div>
+      </Link>
 
       <div className="card__specs">
         <span className="specs-text">
