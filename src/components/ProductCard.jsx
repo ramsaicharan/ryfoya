@@ -22,7 +22,7 @@ function ProductCard({ product, rank }) {
         <span className="banner__match">⚡ {matchPercent}% Match</span>
       </div>
 
-      <Link href={detailsHref} className="card__img">
+      <Link href={detailsHref} className="card__img" prefetch={false}>
         {firstImage ? (
           <img
             className="card__img-photo"
@@ -90,7 +90,7 @@ function ProductCard({ product, rank }) {
         )}
       </Link>
 
-      <Link href={detailsHref} className="card__identity">
+      <Link href={detailsHref} className="card__identity" prefetch={false}>
         <span className="card__brand">{product.brandName}</span>
         <h2 className="card__title">{product.productName}</h2>
       </Link>
@@ -161,7 +161,7 @@ function ProductCard({ product, rank }) {
               Buy on Amazon
             </a>
           ) : null}
-          <Link href={detailsHref} className="btn btn--secondary">
+          <Link href={detailsHref} className="btn btn--secondary" prefetch={false}>
             Details
           </Link>
         </div>

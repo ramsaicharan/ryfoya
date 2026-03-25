@@ -475,6 +475,12 @@ svg {
   display: none;
 }
 
+.persona-sheet__toggle {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .persona-filters__sticky {
   position: sticky;
   top: 72px;
@@ -545,6 +551,7 @@ svg {
   border: 0;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
 }
 
 .persona-chip:hover {
@@ -586,6 +593,7 @@ svg {
   background: transparent;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
 }
 
 .persona-option:hover {
@@ -1626,6 +1634,7 @@ svg {
     box-shadow: 0 12px 28px rgba(124, 91, 255, 0.24);
     margin-left: auto;
     pointer-events: auto;
+    cursor: pointer;
   }
 
   .persona-filters-mobile__count {
@@ -1655,9 +1664,10 @@ svg {
     pointer-events: none;
     transition: opacity 0.22s ease;
     z-index: 40;
+    cursor: pointer;
   }
 
-  .persona-sheet__backdrop--open {
+  .persona-sheet__toggle:checked ~ .persona-sheet__backdrop {
     opacity: 1;
     pointer-events: auto;
   }
@@ -1677,7 +1687,7 @@ svg {
     z-index: 41;
   }
 
-  .persona-sheet--open {
+  .persona-sheet__toggle:checked ~ .persona-sheet {
     transform: translateY(0);
   }
 
@@ -1707,6 +1717,7 @@ svg {
     font-size: 24px;
     font-weight: 800;
     line-height: 1;
+    cursor: pointer;
   }
 
   .persona-sheet__body {

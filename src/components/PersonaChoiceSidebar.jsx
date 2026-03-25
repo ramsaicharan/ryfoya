@@ -1,8 +1,3 @@
-'use client';
-
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-
 const FILTER_GROUPS = [
   { key: 'skin_type', label: 'Skin Type' },
   { key: 'skin_condition', label: 'Skin Condition' },
@@ -161,8 +156,7 @@ function buildCounterpartSelection(selection, fromKey, toKey) {
     return null;
   }
 
-  const nextSelection = { ...selection, [fromKey]: '', [toKey]: value };
-  return nextSelection;
+  return { ...selection, [fromKey]: '', [toKey]: value };
 }
 
 function findCounterpartPersona(pages, selection) {
@@ -275,7 +269,6 @@ function buildGroupOptions(pages, selection, groupKey) {
 function FiltersContent({
   activeSelections,
   clearAllHref,
-  onNavigate,
   selection,
   validPages
 }) {
@@ -284,26 +277,21 @@ function FiltersContent({
       <div className="persona-filters__selected-head">
         <h2 className="persona-filters__selected-title">Selected</h2>
         {activeSelections.length > 0 ? (
-          <button type="button" className="persona-filters__clear" onClick={() => onNavigate(clearAllHref)}>
+          <a href={clearAllHref} className="persona-filters__clear">
             Clear all
-          </button>
+          </a>
         ) : null}
       </div>
 
       {activeSelections.length > 0 ? (
         <div className="persona-filters__active">
           {activeSelections.map((item) => (
-            <button
-              type="button"
-              className="persona-chip persona-chip--active"
-              key={item.key}
-              onClick={() => onNavigate(item.href)}
-            >
+            <a href={item.href} className="persona-chip persona-chip--active" key={item.key}>
               <span className="persona-chip__close" aria-hidden="true">
                 ×
               </span>
               <span>{item.label}</span>
-            </button>
+            </a>
           ))}
         </div>
       ) : null}
@@ -321,17 +309,16 @@ function FiltersContent({
               <h3 className="persona-filter-group__title">{group.label}</h3>
               <div className="persona-filter-group__options">
                 {options.map((option) => (
-                  <button
-                    type="button"
+                  <a
+                    href={option.href}
                     className={`persona-option ${option.isActive ? 'persona-option--selected' : ''}`}
                     key={`${group.key}-${option.value}`}
-                    onClick={() => onNavigate(option.href)}
                   >
                     <span className="persona-option__box" aria-hidden="true">
                       {option.isActive ? '✓' : ''}
                     </span>
                     <span className="persona-option__label">{option.label}</span>
-                  </button>
+                  </a>
                 ))}
               </div>
             </section>
@@ -343,26 +330,15 @@ function FiltersContent({
 }
 
 export default function PersonaChoiceSidebar({ pages, currentPersona }) {
-  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
-  const router = useRouter();
-  const validPages = useMemo(() => (pages || []).filter((page) => page?.page_slug), [pages]);
-  const selection = useMemo(() => getSelection(currentPersona), [currentPersona]);
+  const validPages = (pages || []).filter((page) => page?.page_slug);
+  const selection = getSelection(currentPersona);
   const clearAllHref = '/sunscreens';
-  const activeSelections = useMemo(
-    () =>
-      FILTER_GROUPS.map((group) => ({
-        key: group.key,
-        label: formatOptionLabel(group.key, selection[group.key]),
-        href: getSelectionHref(validPages, { ...selection, [group.key]: '' })
-      })).filter((item) => item.label),
-    [selection, validPages]
-  );
-
-  const closeSheet = () => setIsMobileSheetOpen(false);
-  const navigateTo = (href) => {
-    closeSheet();
-    router.push(href);
-  };
+  const activeSelections = FILTER_GROUPS.map((group) => ({
+    key: group.key,
+    label: formatOptionLabel(group.key, selection[group.key]),
+    href: getSelectionHref(validPages, { ...selection, [group.key]: '' })
+  })).filter((item) => item.label);
+  const mobileSheetId = 'persona-filter-sheet';
 
   return (
     <>
@@ -371,7 +347,6 @@ export default function PersonaChoiceSidebar({ pages, currentPersona }) {
           <FiltersContent
             activeSelections={activeSelections}
             clearAllHref={clearAllHref}
-            onNavigate={navigateTo}
             selection={selection}
             validPages={validPages}
           />
@@ -379,31 +354,29 @@ export default function PersonaChoiceSidebar({ pages, currentPersona }) {
       </aside>
 
       <div className="persona-filters-mobile">
-        <button
-          type="button"
-          className="persona-filters-mobile__trigger"
-          onClick={() => setIsMobileSheetOpen(true)}
-        >
+        <input
+          id={mobileSheetId}
+          className="persona-sheet__toggle"
+          type="checkbox"
+          aria-hidden="true"
+        />
+        <label htmlFor={mobileSheetId} className="persona-filters-mobile__trigger">
           Filters
           {activeSelections.length > 0 ? (
             <span className="persona-filters-mobile__count">{activeSelections.length}</span>
           ) : null}
-        </button>
+        </label>
 
-        <div
-          className={`persona-sheet__backdrop ${isMobileSheetOpen ? 'persona-sheet__backdrop--open' : ''}`}
-          onClick={closeSheet}
-        />
-        <div className={`persona-sheet ${isMobileSheetOpen ? 'persona-sheet--open' : ''}`}>
+        <label htmlFor={mobileSheetId} className="persona-sheet__backdrop" aria-hidden="true" />
+        <div className="persona-sheet">
           <div className="persona-sheet__handle" aria-hidden="true" />
-          <button type="button" className="persona-sheet__close" onClick={closeSheet} aria-label="Close filters">
+          <label htmlFor={mobileSheetId} className="persona-sheet__close" aria-label="Close filters">
             ×
-          </button>
+          </label>
           <div className="persona-sheet__body">
             <FiltersContent
               activeSelections={activeSelections}
               clearAllHref={clearAllHref}
-              onNavigate={navigateTo}
               selection={selection}
               validPages={validPages}
             />

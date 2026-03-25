@@ -102,7 +102,7 @@ export default function SkinMatchTabs({ matches }) {
         </div>
 
         {activeMatch.pageSlug ? (
-          <Link href={`/${activeMatch.pageSlug}`} className="skin-tab__link">
+          <Link href={`/${activeMatch.pageSlug}`} className="skin-tab__link" prefetch={false}>
             {getSkinContextCta(activeMatch)}
           </Link>
         ) : null}

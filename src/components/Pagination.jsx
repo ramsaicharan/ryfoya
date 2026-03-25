@@ -26,6 +26,7 @@ export default function Pagination({ basePath, currentPage, totalPages }) {
       <Link
         className={`pagination__link ${safeCurrentPage <= 1 ? 'pagination__link--disabled' : ''}`}
         href={buildPageHref(basePath, previousPage)}
+        prefetch={false}
         aria-disabled={safeCurrentPage <= 1}
         tabIndex={safeCurrentPage <= 1 ? -1 : undefined}
       >
@@ -39,6 +40,7 @@ export default function Pagination({ basePath, currentPage, totalPages }) {
       <Link
         className={`pagination__link ${safeCurrentPage >= safeTotalPages ? 'pagination__link--disabled' : ''}`}
         href={buildPageHref(basePath, nextPage)}
+        prefetch={false}
         aria-disabled={safeCurrentPage >= safeTotalPages}
         tabIndex={safeCurrentPage >= safeTotalPages ? -1 : undefined}
       >
