@@ -12,6 +12,18 @@ export default async function sitemap() {
       lastModified: new Date()
     },
     {
+      url: `${SITE_URL}/about`,
+      lastModified: new Date()
+    },
+    {
+      url: `${SITE_URL}/how-it-works`,
+      lastModified: new Date()
+    },
+    {
+      url: `${SITE_URL}/legal`,
+      lastModified: new Date()
+    },
+    {
       url: `${SITE_URL}/sunscreens`,
       lastModified: new Date()
     },
