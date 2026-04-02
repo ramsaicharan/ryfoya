@@ -54,6 +54,7 @@ function buildPerformanceFactors(evaluations) {
   const spfLevel = getEvaluationMetric(evaluations, 'light_shield', 'spf_level');
   const broadSpectrum = getEvaluationMetric(evaluations, 'light_shield', 'broad_spectrum_quality');
   const waterResistance = getEvaluationMetric(evaluations, 'light_shield', 'water_sweat_resistance');
+  const photostability = getEvaluationMetric(evaluations, 'light_shield', 'photostability');
   const visibleLight = getEvaluationMetric(evaluations, 'light_shield', 'visible_light_protection');
   const irritationRisk = getEvaluationMetric(evaluations, 'skin_safety', 'irritation_potential');
   const poreClogging = getEvaluationMetric(evaluations, 'pore_and_oil', 'comedogenicity_score');
@@ -80,6 +81,13 @@ function buildPerformanceFactors(evaluations) {
       score: waterResistance.score,
       shortDesc: waterResistance.shortDesc,
       status: getPositiveMetricStatus(waterResistance.score)
+    },
+    {
+      id: 'photoStability',
+      name: 'Photo Stability',
+      score: photostability.score,
+      shortDesc: photostability.shortDesc,
+      status: getPositiveMetricStatus(photostability.score)
     },
     {
       id: 'visible-light',
@@ -135,8 +143,8 @@ export async function generateMetadata({ params }) {
 export default async function SunscreenDetailPage({ params, searchParams }) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
-  const contextPageSlug = String(resolvedSearchParams?.context || '').trim();
-  const pageData = await fetchProductDetailPageData(slug, contextPageSlug);
+  const contextRouteSlug = String(resolvedSearchParams?.context || '').trim();
+  const pageData = await fetchProductDetailPageData(slug, contextRouteSlug);
 
   if (!pageData) {
     notFound();

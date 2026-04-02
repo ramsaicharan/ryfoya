@@ -3,7 +3,10 @@ import { Scale, AlertTriangle, FileText, ShieldAlert, ShoppingCart } from 'lucid
 export const metadata = {
   title: 'Legal & Disclaimer',
   description:
-    'Read Ryfoya disclaimers on methodology, formulation changes, medical advice, and affiliate relationships.'
+    'Read Ryfoya disclaimers on methodology, formulation changes, medical advice, and affiliate relationships.',
+  alternates: {
+    canonical: '/legal'
+  }
 };
 
 const LEGAL_SECTIONS = [

@@ -145,8 +145,20 @@ function findBestFallbackPersona(pages, selection) {
       return leftFilledFields - rightFilledFields;
     }
 
-    return normalizeValue(left.page_slug).localeCompare(normalizeValue(right.page_slug));
+    return normalizeValue(left.route_slug || left.page_slug).localeCompare(
+      normalizeValue(right.route_slug || right.page_slug)
+    );
   })[0];
+}
+
+function getPersonaHref(page) {
+  const routeSlug = normalizeValue(page?.route_slug);
+  if (routeSlug) {
+    return `/sunscreens/best/${routeSlug}`;
+  }
+
+  const pageSlug = normalizeValue(page?.page_slug);
+  return pageSlug ? `/${pageSlug}` : '/sunscreens';
 }
 
 function buildCounterpartSelection(selection, fromKey, toKey) {
@@ -193,7 +205,7 @@ function getSelectionHref(pages, selection) {
     || findBestFallbackPersona(pages, normalizedSelection)
     || findCounterpartPersona(pages, normalizedSelection);
 
-  return persona?.page_slug ? `/${persona.page_slug}` : '/sunscreens';
+  return persona ? getPersonaHref(persona) : '/sunscreens';
 }
 
 function formatOptionLabel(groupKey, value) {
@@ -242,7 +254,7 @@ function buildGroupOptions(pages, selection, groupKey) {
   const seen = new Set();
 
   for (const page of pages) {
-    if (!page.page_slug || !matchesSelection(page, selection, groupKey)) {
+    if (!(page.route_slug || page.page_slug) || !matchesSelection(page, selection, groupKey)) {
       continue;
     }
 
@@ -330,7 +342,7 @@ function FiltersContent({
 }
 
 export default function PersonaChoiceSidebar({ pages, currentPersona }) {
-  const validPages = (pages || []).filter((page) => page?.page_slug);
+  const validPages = (pages || []).filter((page) => page?.route_slug || page?.page_slug);
   const selection = getSelection(currentPersona);
   const clearAllHref = '/sunscreens';
   const activeSelections = FILTER_GROUPS.map((group) => ({

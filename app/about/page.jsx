@@ -4,7 +4,10 @@ import { Heart, Shield, Sparkles, Microscope, ArrowRight } from 'lucide-react';
 export const metadata = {
   title: 'About Ryfoya',
   description:
-    "Learn why Ryfoya exists, how we evaluate skincare, and why we focus on clear, evidence-based sunscreen recommendations."
+    "Learn why Ryfoya exists, how we evaluate skincare, and why we focus on clear, evidence-based sunscreen recommendations.",
+  alternates: {
+    canonical: '/about'
+  }
 };
 
 const PRINCIPLES = [

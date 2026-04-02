@@ -15,11 +15,11 @@ function getSkinContextLabel(page) {
     .map((value) => String(value || '').trim())
     .filter(Boolean);
 
-  return parts.join(' and ') || page.page_slug;
+  return parts.join(' and ') || page.route_slug || page.page_slug;
 }
 
 function Footer({ pages }) {
-  const skinContextPages = pages.filter((page) => page.page_slug).slice(0, 8);
+  const skinContextPages = pages.filter((page) => page.route_slug || page.page_slug).slice(0, 8);
   const columns = splitIntoColumns(skinContextPages, 4);
 
   return (
@@ -43,7 +43,10 @@ function Footer({ pages }) {
               <ul className="site-footer__list" key={`footer-column-${columnIndex}`}>
                 {column.map((page) => (
                   <li key={page.id}>
-                    <a className="site-footer__link" href={`/${page.page_slug}`}>
+                    <a
+                      className="site-footer__link"
+                      href={page.route_slug ? `/sunscreens/best/${page.route_slug}` : `/${page.page_slug}`}
+                    >
                       {getSkinContextLabel(page)}
                     </a>
                   </li>

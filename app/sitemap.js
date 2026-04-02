@@ -15,8 +15,10 @@ export default async function sitemap() {
       url: `${SITE_URL}/sunscreens`,
       lastModified: new Date()
     },
-    ...personas.map((persona) => ({
-      url: `${SITE_URL}/${persona.page_slug}`,
+    ...personas
+      .filter((persona) => persona.route_slug)
+      .map((persona) => ({
+      url: `${SITE_URL}/sunscreens/best/${persona.route_slug}`,
       lastModified: persona.created_at || new Date()
     })),
     ...productRoutes.map((product) => ({

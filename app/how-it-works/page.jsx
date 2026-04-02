@@ -17,7 +17,10 @@ import {
 export const metadata = {
   title: 'How Ryfoya Works',
   description:
-    'See how Ryfoya evaluates ingredients, product performance, safety, and skin-context fit before recommending sunscreens.'
+    'See how Ryfoya evaluates ingredients, product performance, safety, and skin-context fit before recommending sunscreens.',
+  alternates: {
+    canonical: '/how-it-works'
+  }
 };
 
 const agents = [

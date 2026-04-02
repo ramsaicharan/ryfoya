@@ -20,6 +20,16 @@ const LISTINGS_REVALIDATE = 900;
 const PRODUCT_REVALIDATE = 1800;
 const DEFAULT_PRODUCTS_PER_PAGE = 24;
 
+function buildPersonaPath(routeSlug, pageSlug = '') {
+  const safeRouteSlug = String(routeSlug || '').trim();
+  if (safeRouteSlug) {
+    return `/sunscreens/best/${safeRouteSlug}`;
+  }
+
+  const safePageSlug = String(pageSlug || '').trim();
+  return safePageSlug ? `/${safePageSlug}` : '/sunscreens';
+}
+
 function seededPrice(seed) {
   const value = String(seed || 'fallback-seed');
   const hash = [...value].reduce((accumulator, char) => accumulator + char.charCodeAt(0), 0);
@@ -316,7 +326,7 @@ const fetchAllPersonasCached = unstable_cache(
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from('target_personas')
-      .select('id, page_slug, page_title, created_at, skin_type, skin_condition, age, skin_tone')
+      .select('id, page_slug, route_slug, page_title, created_at, skin_type, skin_condition, age, skin_tone')
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -339,7 +349,7 @@ const fetchPersonaBySlugCached = unstable_cache(
     const { data: personaRows, error } = await supabase
       .from('target_personas')
       .select(
-        'id, skin_type, skin_condition, age, skin_tone, page_title, page_description, meta_description, page_slug'
+        'id, skin_type, skin_condition, age, skin_tone, page_title, page_description, meta_description, page_slug, route_slug'
       )
       .eq('page_slug', pageSlug)
       .limit(2);
@@ -370,6 +380,45 @@ export async function fetchPersonaBySlug(pageSlug) {
   }
 
   return fetchPersonaBySlugCached(safeSlug);
+}
+
+const fetchPersonaByRouteSlugCached = unstable_cache(
+  async (routeSlug) => {
+    const supabase = getSupabaseServerClient();
+    const { data: personaRows, error } = await supabase
+      .from('target_personas')
+      .select(
+        'id, skin_type, skin_condition, age, skin_tone, page_title, page_description, meta_description, page_slug, route_slug'
+      )
+      .eq('route_slug', routeSlug)
+      .limit(2);
+
+    if (error) {
+      throw new Error(`Could not load route persona: ${error.message}`);
+    }
+
+    if (!personaRows || personaRows.length === 0) {
+      return null;
+    }
+
+    if (personaRows.length > 1) {
+      throw new Error(`Multiple target_personas rows found for route_slug "${routeSlug}". Make route_slug unique.`);
+    }
+
+    return personaRows[0];
+  },
+  ['persona-by-route-slug'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['personas'] }
+);
+
+export async function fetchPersonaByRouteSlug(routeSlug) {
+  const safeRouteSlug = String(routeSlug || '').trim();
+
+  if (!safeRouteSlug) {
+    return null;
+  }
+
+  return fetchPersonaByRouteSlugCached(safeRouteSlug);
 }
 
 const fetchProductsForPersonaPageCached = unstable_cache(
@@ -425,9 +474,9 @@ const fetchProductsForPersonaPageCached = unstable_cache(
   { revalidate: LISTINGS_REVALIDATE, tags: ['persona-products'] }
 );
 
-const fetchPageDataCached = unstable_cache(
-  async (pageSlug, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
-    const persona = await fetchPersonaBySlug(pageSlug);
+const fetchPageDataByRouteSlugCached = unstable_cache(
+  async (routeSlug, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
+    const persona = await fetchPersonaByRouteSlug(routeSlug);
 
     if (!persona) {
       return null;
@@ -447,18 +496,26 @@ const fetchPageDataCached = unstable_cache(
       pageSize: result.pageSize
     };
   },
-  ['page-data'],
+  ['page-data-by-route-slug'],
   { revalidate: LISTINGS_REVALIDATE, tags: ['persona-pages'] }
 );
 
-export async function fetchPageData(pageSlug, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) {
-  const safeSlug = String(pageSlug || '').trim();
+export async function fetchPageDataByRouteSlug(
+  routeSlug,
+  requestedPage = 1,
+  requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE
+) {
+  const safeRouteSlug = String(routeSlug || '').trim();
 
-  if (!safeSlug) {
+  if (!safeRouteSlug) {
     return null;
   }
 
-  return fetchPageDataCached(safeSlug, normalizePageNumber(requestedPage), normalizePageSize(requestedPageSize));
+  return fetchPageDataByRouteSlugCached(
+    safeRouteSlug,
+    normalizePageNumber(requestedPage),
+    normalizePageSize(requestedPageSize)
+  );
 }
 
 const fetchOverallSunscreensCached = unstable_cache(
@@ -597,11 +654,11 @@ const fetchProductSkinScoreRowsCached = unstable_cache(
   { revalidate: PRODUCT_REVALIDATE, tags: ['product-skin-scores'] }
 );
 
-async function fetchProductSkinMatches(productId, contextPageSlug = '') {
+async function fetchProductSkinMatches(productId, contextRouteSlug = '') {
   const [rows, personas, contextPersona] = await Promise.all([
     fetchProductSkinScoreRowsCached(productId),
     fetchAllPersonas(),
-    contextPageSlug ? fetchPersonaBySlug(contextPageSlug).catch(() => null) : null
+    contextRouteSlug ? fetchPersonaByRouteSlug(contextRouteSlug).catch(() => null) : null
   ]);
 
   const contextPersonaId = contextPersona?.id || '';
@@ -625,6 +682,8 @@ async function fetchProductSkinMatches(productId, contextPageSlug = '') {
         pros: toList(row.pros, ['Comfortable wear', 'Daily-use friendly', 'Balanced texture']),
         cons: toList(row.cons, ['Patch test advised', 'May vary by routine', 'Reapplication still required']),
         pageSlug: persona?.page_slug || null,
+        routeSlug: persona?.route_slug || null,
+        pageHref: buildPersonaPath(persona?.route_slug, persona?.page_slug),
         pageTitle: persona?.page_title || 'Skin Context Match',
         contextLabel: buildPersonaContext(persona),
         tabLabel: getPersonaTabLabel(persona)
@@ -737,7 +796,7 @@ async function fetchProductEvaluations(productId) {
   return fetchProductEvaluationsCached(productId);
 }
 
-export async function fetchProductDetailPageData(productSlug, contextPageSlug = '') {
+export async function fetchProductDetailPageData(productSlug, contextRouteSlug = '') {
   const productRow = await fetchProductBySlug(productSlug);
 
   if (!productRow) {
@@ -747,7 +806,7 @@ export async function fetchProductDetailPageData(productSlug, contextPageSlug = 
   const resolvedProductId = productRow.id;
 
   const [skinMatchesResult, ingredientsResult, evaluationsResult] = await Promise.allSettled([
-    fetchProductSkinMatches(resolvedProductId, contextPageSlug),
+    fetchProductSkinMatches(resolvedProductId, contextRouteSlug),
     fetchProductIngredients(resolvedProductId),
     fetchProductEvaluations(resolvedProductId)
   ]);
@@ -822,7 +881,7 @@ export function getDefaultMetadata() {
 export function getPersonaMetadata(persona) {
   const title = persona?.page_title || SITE_NAME;
   const description = persona?.meta_description || persona?.page_description || DEFAULT_DESCRIPTION;
-  const pathname = persona?.page_slug ? `/${persona.page_slug}` : '/';
+  const pathname = buildPersonaPath(persona?.route_slug, persona?.page_slug);
 
   return {
     title,

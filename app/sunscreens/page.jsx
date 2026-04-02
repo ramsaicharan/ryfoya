@@ -32,6 +32,7 @@ export default async function SunscreensPage({ searchParams }) {
   const filterPages = personas.map((page) => ({
     id: page.id,
     page_slug: page.page_slug,
+    route_slug: page.route_slug,
     skin_type: page.skin_type,
     skin_condition: page.skin_condition,
     age: page.age,
