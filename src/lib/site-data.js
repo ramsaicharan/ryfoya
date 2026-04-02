@@ -5,7 +5,7 @@ import { getSupabaseServerClient } from './supabaseServer';
 const SITE_NAME = 'Ryfoya';
 const SITE_URL = 'https://ryfoya.com';
 const DEFAULT_DESCRIPTION = 'Ryfoya helps you browse persona-driven sunscreen recommendation pages.';
-const DEFAULT_OG_IMAGE = `${SITE_URL}/ryfoya-logo.png`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/ryfoya-logo.svg`;
 const SKIN_CONTEXT_PERSONA_IDS = [
   '0f8e5367-e5a4-4dc4-9703-d5a639fe1637',
   'e8d647a6-6106-4f1d-9fca-a7b3a28660d3',

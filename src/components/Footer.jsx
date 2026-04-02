@@ -27,7 +27,7 @@ function Footer({ pages }) {
       <div className="wrap site-footer__grid">
         <div className="site-footer__brand">
           <a className="site-footer__logo" href="/">
-            <img className="site-footer__logo-image" src="/ryfoya-logo.png" alt="Ryfoya" />
+            <img className="site-footer__logo-image" src="/ryfoya-logo.svg" alt="Ryfoya" />
             <span className="sr-only">Ryfoya</span>
           </a>
           <p className="site-footer__copy">

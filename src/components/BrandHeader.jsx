@@ -16,7 +16,7 @@ function BrandHeader() {
     <div className="site-nav h-10">
       <div className="wrap site-nav__inner">
         <Link className="brand-logo" href="/" prefetch={false} onClick={() => setIsOpen(false)}>
-          <img className="brand-logo__image" src="/ryfoya-logo.png" alt="Ryfoya" />
+          <img className="brand-logo__image" src="/ryfoya-logo.svg" alt="Ryfoya" />
           <span className="brand-logo__text sr-only">Ryfoya</span>
         </Link>
 
