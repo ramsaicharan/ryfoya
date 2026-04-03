@@ -23,6 +23,7 @@ Use these in local development and on Vercel:
 ```bash
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
+REVALIDATE_SECRET=your-long-random-secret
 ```
 
 Legacy fallback support still exists for:
@@ -52,6 +53,99 @@ Build for production:
 
 ```bash
 npm run build
+```
+
+## Cache Revalidation
+
+Production data reads use Next.js data-cache tags. After changing route-driving data in Supabase, call the internal revalidation endpoint so production updates immediately instead of waiting for TTL expiry.
+
+Endpoint:
+
+```bash
+POST /api/internal/revalidate
+```
+
+Auth:
+
+- set `REVALIDATE_SECRET` in Vercel
+- send it as either:
+  - `Authorization: Bearer <secret>`
+  - `x-revalidate-secret: <secret>`
+  - `?secret=<secret>`
+
+Secret value:
+
+- use any long random string
+- recommended length: `32+` characters
+- example:
+
+```bash
+openssl rand -hex 32
+```
+
+Recommended payloads:
+
+```bash
+curl -X POST "https://ryfoya.com/api/internal/revalidate" \
+  -H "Authorization: Bearer $REVALIDATE_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"scope":"all"}'
+```
+
+```bash
+curl -X POST "https://ryfoya.com/api/internal/revalidate" \
+  -H "Authorization: Bearer $REVALIDATE_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"scope":"personas"}'
+```
+
+Available scopes:
+
+- `all`
+- `listings`
+- `sitemap`
+- `products`
+- `personas`
+- `lookups`
+
+Use this after changes to:
+
+- `target_personas`
+- `products`
+- `product_skin_scores`
+- `brands`
+- `product_formats`
+- `filter_types`
+
+Supabase webhook-friendly usage:
+
+- the endpoint also accepts `GET`
+- scope can be passed in the query string
+
+Examples:
+
+```text
+https://ryfoya.com/api/internal/revalidate?scope=personas&secret=YOUR_SECRET
+```
+
+```text
+https://ryfoya.com/api/internal/revalidate?scope=lookups&secret=YOUR_SECRET
+```
+
+```text
+https://ryfoya.com/api/internal/revalidate?scope=products&secret=YOUR_SECRET
+```
+
+Recommended Supabase webhook mapping:
+
+- `target_personas` -> `scope=personas`
+- `brands`, `product_formats`, `filter_types` -> `scope=lookups`
+- `products`, `product_skin_scores` -> `scope=products`
+
+If you want a single simple webhook first, use:
+
+```text
+https://ryfoya.com/api/internal/revalidate?scope=all&secret=YOUR_SECRET
 ```
 
 Start production locally:
