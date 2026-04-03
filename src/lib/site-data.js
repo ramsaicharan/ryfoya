@@ -19,6 +19,8 @@ const PERSONAS_REVALIDATE = 3600;
 const LISTINGS_REVALIDATE = 900;
 const PRODUCT_REVALIDATE = 1800;
 const DEFAULT_PRODUCTS_PER_PAGE = 24;
+const SITEMAP_CHUNK_SIZE = 10000;
+const SITEMAP_FAMILIES = ['static', 'products', 'skin-context', 'brands', 'formats', 'filters', 'combinations'];
 
 function buildPersonaPath(routeSlug, pageSlug = '') {
   const safeRouteSlug = String(routeSlug || '').trim();
@@ -28,6 +30,189 @@ function buildPersonaPath(routeSlug, pageSlug = '') {
 
   const safePageSlug = String(pageSlug || '').trim();
   return safePageSlug ? `/${safePageSlug}` : '/sunscreens';
+}
+
+function buildBrandPath(brandSlug) {
+  return `/sunscreens/best/brand/${brandSlug}`;
+}
+
+function buildFormatPath(productFormatSlug) {
+  return `/sunscreens/best/format/${productFormatSlug}`;
+}
+
+function buildFilterTypePath(filterTypeSlug) {
+  return `/sunscreens/best/filter/${filterTypeSlug}`;
+}
+
+function buildListingPath({
+  skinContextRouteSlug = '',
+  brandSlug = '',
+  productFormatSlug = '',
+  filterTypeSlug = ''
+}) {
+  const skinContext = String(skinContextRouteSlug || '').trim();
+  const brand = String(brandSlug || '').trim();
+  const productFormat = String(productFormatSlug || '').trim();
+  const filterType = String(filterTypeSlug || '').trim();
+
+  if (filterType) {
+    let path = buildFilterTypePath(filterType);
+    if (skinContext) {
+      path += `/${skinContext}`;
+      if (brand) {
+        path += `/brand/${brand}`;
+      }
+    }
+    return path;
+  }
+
+  if (productFormat) {
+    let path = buildFormatPath(productFormat);
+    if (skinContext) {
+      path += `/${skinContext}`;
+      if (brand) {
+        path += `/brand/${brand}`;
+      }
+    }
+    return path;
+  }
+
+  if (skinContext) {
+    let path = `/sunscreens/best/${skinContext}`;
+    if (brand) {
+      path += `/brand/${brand}`;
+    }
+    return path;
+  }
+
+  if (brand) {
+    return buildBrandPath(brand);
+  }
+
+  return '/sunscreens';
+}
+
+function formatLookupLabel(value, fallback = '') {
+  const normalized = String(value || '').trim();
+  return normalized || fallback;
+}
+
+function normalizeLookupValue(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function slugifyLookupValue(value) {
+  const normalized = normalizeLookupValue(value).toLowerCase();
+  const slug = normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || 'item';
+}
+
+function buildFallbackLookupMeta(label) {
+  const safeLabel = normalizeLookupValue(label);
+
+  return {
+    metaTitle: `Best ${safeLabel} Sunscreens | Ryfoya`,
+    metaDescription: `Browse the best ${safeLabel} sunscreens ranked on Ryfoya with transparent scoring, formula analysis, and skin-context comparisons.`
+  };
+}
+
+function buildFallbackLookupRows(values) {
+  const normalizedValues = Array.isArray(values) ? values : [];
+  const seenKeys = new Set();
+  const seenSlugs = new Set();
+  const rows = [];
+
+  for (const rawValue of normalizedValues) {
+    const sourceValue = normalizeLookupValue(rawValue);
+
+    if (!sourceValue) {
+      continue;
+    }
+
+    const normalizedKey = sourceValue.toLowerCase();
+    if (seenKeys.has(normalizedKey)) {
+      continue;
+    }
+
+    seenKeys.add(normalizedKey);
+
+    const baseSlug = slugifyLookupValue(sourceValue);
+    let slug = baseSlug;
+    let suffix = 2;
+
+    while (seenSlugs.has(slug)) {
+      slug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    seenSlugs.add(slug);
+
+    rows.push({
+      id: null,
+      slug,
+      label: sourceValue,
+      sourceValue,
+      ...buildFallbackLookupMeta(sourceValue),
+      createdAt: null
+    });
+  }
+
+  return rows.sort((left, right) => left.label.localeCompare(right.label));
+}
+
+function buildTitleContext(persona) {
+  const age = String(persona?.age || '').trim();
+  const skinCondition = String(persona?.skin_condition || '').trim();
+  const skinType = String(persona?.skin_type || '').trim();
+  const skinTypeWithSuffix = skinType ? (/skin$/i.test(skinType) ? skinType : `${skinType} Skin`) : '';
+  const tail = [skinCondition, skinTypeWithSuffix].filter(Boolean).join(' ').trim();
+
+  if (age && tail) {
+    return `for ${age} with ${tail}`;
+  }
+
+  if (age) {
+    return `for ${age}`;
+  }
+
+  if (tail) {
+    return `for ${tail}`;
+  }
+
+  return '';
+}
+
+function buildListingTitle({ persona = null, brand = null, productFormat = null, filterType = null }) {
+  const prefixParts = [filterType?.label, brand?.label].map((value) => String(value || '').trim()).filter(Boolean);
+  const sunscreenNoun = productFormat?.label
+    ? `Sunscreen ${String(productFormat.label).trim()}s`
+    : 'Sunscreens';
+  const contextSuffix = buildTitleContext(persona);
+
+  return ['Best', ...prefixParts, sunscreenNoun, contextSuffix]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildListingDescription({ persona = null, brand = null, productFormat = null, filterType = null }) {
+  const title = buildListingTitle({ persona, brand, productFormat, filterType });
+  const base =
+    String(
+      (!persona && !brand && !productFormat && filterType && filterType.metaDescription) ||
+      (!persona && !brand && productFormat && !filterType && productFormat.metaDescription) ||
+      (!persona && brand && !productFormat && !filterType && brand.metaDescription) ||
+      ''
+    ).trim();
+
+  if (base) {
+    return base;
+  }
+
+  return `${title} ranked on Ryfoya with transparent scoring, ingredient analysis, and formula-level tradeoffs.`;
 }
 
 function seededPrice(seed) {
@@ -279,6 +464,9 @@ export function normalizeRow(row, persona) {
     productName: product?.product_name || 'Unnamed Product',
     brandName: product?.brand_name || 'Unknown Brand',
     productBuyLink: String(product?.product_buy_link || '').trim(),
+    brandId: product?.brand_id || null,
+    productFormatId: product?.product_format_id || null,
+    filterTypeId: product?.filter_type_id || null,
     spfRating: product?.spf_rating || 'SPF N/A',
     paRating: product?.pa_rating || 'PA N/A',
     imageLinks: normalizeImageLinks(product?.image_links),
@@ -307,6 +495,9 @@ export function normalizeOverallProduct(product) {
     productName: product.product_name || 'Unnamed Product',
     brandName: product.brand_name || 'Unknown Brand',
     productBuyLink: String(product.product_buy_link || '').trim(),
+    brandId: product.brand_id || null,
+    productFormatId: product.product_format_id || null,
+    filterTypeId: product.filter_type_id || null,
     spfRating: product.spf_rating || 'SPF N/A',
     paRating: product.pa_rating || 'PA N/A',
     imageLinks: normalizeImageLinks(product.image_links),
@@ -341,6 +532,125 @@ const fetchAllPersonasCached = unstable_cache(
 
 export async function fetchAllPersonas() {
   return fetchAllPersonasCached();
+}
+
+function normalizeLookupRow(row) {
+  return {
+    id: row.id,
+    slug: String(row.slug || '').trim(),
+    label: formatLookupLabel(row.label, row.source_value),
+    sourceValue: String(row.source_value || '').trim(),
+    metaTitle: String(row.meta_title || '').trim(),
+    metaDescription: String(row.meta_description || '').trim(),
+    createdAt: row.created_at || null
+  };
+}
+
+const fetchProductLookupFallbackRowsCached = unstable_cache(
+  async () => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('products')
+      .select('brand_name, product_format, filter_type');
+
+    if (error) {
+      throw new Error(`Could not load product lookup fallback rows: ${error.message}`);
+    }
+
+    const rows = data || [];
+
+    return {
+      brands: buildFallbackLookupRows(rows.map((row) => row.brand_name)),
+      productFormats: buildFallbackLookupRows(rows.map((row) => row.product_format)),
+      filterTypes: buildFallbackLookupRows(rows.map((row) => row.filter_type))
+    };
+  },
+  ['product-lookup-fallback-rows'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['products', 'brands', 'product-formats', 'filter-types'] }
+);
+
+const fetchAllBrandsCached = unstable_cache(
+  async () => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('brands')
+      .select('id, slug, label, source_value, meta_title, meta_description, created_at')
+      .order('label', { ascending: true });
+
+    if (error) {
+      throw new Error(`Could not load brands: ${error.message}`);
+    }
+
+    return (data || []).map(normalizeLookupRow);
+  },
+  ['all-brands'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['brands'] }
+);
+
+export async function fetchAllBrands() {
+  const rows = await fetchAllBrandsCached();
+
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  return (await fetchProductLookupFallbackRowsCached()).brands;
+}
+
+const fetchAllProductFormatsCached = unstable_cache(
+  async () => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('product_formats')
+      .select('id, slug, label, source_value, meta_title, meta_description, created_at')
+      .order('label', { ascending: true });
+
+    if (error) {
+      throw new Error(`Could not load product formats: ${error.message}`);
+    }
+
+    return (data || []).map(normalizeLookupRow);
+  },
+  ['all-product-formats'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['product-formats'] }
+);
+
+export async function fetchAllProductFormats() {
+  const rows = await fetchAllProductFormatsCached();
+
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  return (await fetchProductLookupFallbackRowsCached()).productFormats;
+}
+
+const fetchAllFilterTypesCached = unstable_cache(
+  async () => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('filter_types')
+      .select('id, slug, label, source_value, meta_title, meta_description, created_at')
+      .order('label', { ascending: true });
+
+    if (error) {
+      throw new Error(`Could not load filter types: ${error.message}`);
+    }
+
+    return (data || []).map(normalizeLookupRow);
+  },
+  ['all-filter-types'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['filter-types'] }
+);
+
+export async function fetchAllFilterTypes() {
+  const rows = await fetchAllFilterTypesCached();
+
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  return (await fetchProductLookupFallbackRowsCached()).filterTypes;
 }
 
 const fetchPersonaBySlugCached = unstable_cache(
@@ -421,6 +731,46 @@ export async function fetchPersonaByRouteSlug(routeSlug) {
   return fetchPersonaByRouteSlugCached(safeRouteSlug);
 }
 
+function findLookupBySlug(rows, slug) {
+  const safeSlug = String(slug || '').trim();
+  if (!safeSlug) {
+    return null;
+  }
+
+  return rows.find((row) => row.slug === safeSlug) || null;
+}
+
+export async function fetchBrandBySlug(brandSlug) {
+  const brands = await fetchAllBrands();
+  return findLookupBySlug(brands, brandSlug);
+}
+
+export async function fetchProductFormatBySlug(productFormatSlug) {
+  const productFormats = await fetchAllProductFormats();
+  return findLookupBySlug(productFormats, productFormatSlug);
+}
+
+export async function fetchFilterTypeBySlug(filterTypeSlug) {
+  const filterTypes = await fetchAllFilterTypes();
+  return findLookupBySlug(filterTypes, filterTypeSlug);
+}
+
+export async function fetchListingFiltersData() {
+  const [personas, brands, productFormats, filterTypes] = await Promise.all([
+    fetchAllPersonas(),
+    fetchAllBrands(),
+    fetchAllProductFormats(),
+    fetchAllFilterTypes()
+  ]);
+
+  return {
+    personas,
+    brands,
+    productFormats,
+    filterTypes
+  };
+}
+
 const fetchProductsForPersonaPageCached = unstable_cache(
   async (personaId, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
     const currentPage = normalizePageNumber(requestedPage);
@@ -428,7 +778,7 @@ const fetchProductsForPersonaPageCached = unstable_cache(
     const supabase = getSupabaseServerClient();
     const baseSelect = 'id, product_id, persona_id, score, labels, pros, cons';
     const productFields =
-      'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
+      'id, slug, product_name, brand_name, product_buy_link, brand_id, product_format_id, filter_type_id, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
     const selectWithNamedFk = `${baseSelect}, product:products!product_skin_scores_product_id_fkey(${productFields})`;
     const selectWithDefaultRelation = `${baseSelect}, products(${productFields})`;
 
@@ -518,6 +868,293 @@ export async function fetchPageDataByRouteSlug(
   );
 }
 
+async function fetchFilteredProductIds({
+  brandId = '',
+  brandValue = '',
+  productFormatId = '',
+  productFormatValue = '',
+  filterTypeId = '',
+  filterTypeValue = '',
+  requireOverallScore = false
+}) {
+  const supabase = getSupabaseServerClient();
+  let query = supabase.from('products').select('id');
+
+  if (brandId) {
+    query = query.eq('brand_id', brandId);
+  } else if (brandValue) {
+    query = query.eq('brand_name', brandValue);
+  }
+
+  if (productFormatId) {
+    query = query.eq('product_format_id', productFormatId);
+  } else if (productFormatValue) {
+    query = query.eq('product_format', productFormatValue);
+  }
+
+  if (filterTypeId) {
+    query = query.eq('filter_type_id', filterTypeId);
+  } else if (filterTypeValue) {
+    query = query.eq('filter_type', filterTypeValue);
+  }
+
+  if (requireOverallScore) {
+    query = query.not('overall_score', 'is', null);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Could not load filtered product ids: ${error.message}`);
+  }
+
+  return (data || []).map((row) => row.id).filter(Boolean);
+}
+
+function isSingleDimensionListing({ persona, brand, productFormat, filterType }) {
+  const activeCount = [persona, brand, productFormat, filterType].filter(Boolean).length;
+  return activeCount === 1;
+}
+
+function buildListingHeader({ persona = null, brand = null, productFormat = null, filterType = null }) {
+  return {
+    page_title: buildListingTitle({ persona, brand, productFormat, filterType }),
+    page_description:
+      String(persona?.page_description || '').trim() ||
+      buildListingDescription({ persona: null, brand, productFormat, filterType })
+  };
+}
+
+const fetchListingPageDataCached = unstable_cache(
+  async (criteria, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
+    const currentPage = normalizePageNumber(requestedPage);
+    const pageSize = normalizePageSize(requestedPageSize);
+    const safeCriteria = criteria || {};
+
+    const [persona, brand, productFormat, filterType] = await Promise.all([
+      safeCriteria.skinContextRouteSlug ? fetchPersonaByRouteSlug(safeCriteria.skinContextRouteSlug) : Promise.resolve(null),
+      safeCriteria.brandSlug ? fetchBrandBySlug(safeCriteria.brandSlug) : Promise.resolve(null),
+      safeCriteria.productFormatSlug ? fetchProductFormatBySlug(safeCriteria.productFormatSlug) : Promise.resolve(null),
+      safeCriteria.filterTypeSlug ? fetchFilterTypeBySlug(safeCriteria.filterTypeSlug) : Promise.resolve(null)
+    ]);
+
+    if (
+      (safeCriteria.skinContextRouteSlug && !persona) ||
+      (safeCriteria.brandSlug && !brand) ||
+      (safeCriteria.productFormatSlug && !productFormat) ||
+      (safeCriteria.filterTypeSlug && !filterType)
+    ) {
+      return null;
+    }
+
+    const brandId = brand?.id || '';
+    const productFormatId = productFormat?.id || '';
+    const filterTypeId = filterType?.id || '';
+    const brandValue = normalizeLookupValue(brand?.sourceValue || brand?.label || '');
+    const productFormatValue = normalizeLookupValue(productFormat?.sourceValue || productFormat?.label || '');
+    const filterTypeValue = normalizeLookupValue(filterType?.sourceValue || filterType?.label || '');
+
+    if (persona) {
+      const filteredProductIds =
+        brandId || brandValue || productFormatId || productFormatValue || filterTypeId || filterTypeValue
+          ? await fetchFilteredProductIds({
+              brandId,
+              brandValue,
+              productFormatId,
+              productFormatValue,
+              filterTypeId,
+              filterTypeValue,
+              requireOverallScore: false
+            })
+          : null;
+
+      if (Array.isArray(filteredProductIds) && filteredProductIds.length === 0) {
+        const header = buildListingHeader({ persona, brand, productFormat, filterType });
+        return {
+          persona: { ...persona, ...header },
+          products: [],
+          formulasReviewed: 0,
+          totalCount: 0,
+          totalPages: 1,
+          currentPage: 1,
+          pageSize
+        };
+      }
+
+      const supabase = getSupabaseServerClient();
+      let countQuery = supabase
+        .from('product_skin_scores')
+        .select('id', { count: 'exact', head: true })
+        .eq('persona_id', persona.id);
+
+      if (Array.isArray(filteredProductIds)) {
+        countQuery = countQuery.in('product_id', filteredProductIds);
+      }
+
+      const { count, error: countError } = await countQuery;
+
+      if (countError) {
+        throw new Error(`Could not count filtered persona products: ${countError.message}`);
+      }
+
+      const pagination = buildPaginationData(count, currentPage, pageSize);
+      const from = (pagination.currentPage - 1) * pagination.pageSize;
+      const to = from + pagination.pageSize - 1;
+      const baseSelect = 'id, product_id, persona_id, score, labels, pros, cons';
+      const productFields =
+        'id, slug, product_name, brand_name, product_buy_link, brand_id, product_format_id, filter_type_id, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
+      const selectWithNamedFk = `${baseSelect}, product:products!product_skin_scores_product_id_fkey(${productFields})`;
+      const selectWithDefaultRelation = `${baseSelect}, products(${productFields})`;
+
+      let result = supabase
+        .from('product_skin_scores')
+        .select(selectWithNamedFk)
+        .eq('persona_id', persona.id)
+        .order('score', { ascending: false })
+        .range(from, to);
+
+      if (Array.isArray(filteredProductIds)) {
+        result = result.in('product_id', filteredProductIds);
+      }
+
+      let queryResult = await result;
+
+      if (queryResult.error) {
+        let fallback = supabase
+          .from('product_skin_scores')
+          .select(selectWithDefaultRelation)
+          .eq('persona_id', persona.id)
+          .order('score', { ascending: false })
+          .range(from, to);
+
+        if (Array.isArray(filteredProductIds)) {
+          fallback = fallback.in('product_id', filteredProductIds);
+        }
+
+        queryResult = await fallback;
+      }
+
+      if (queryResult.error) {
+        throw new Error(`Could not load filtered persona products: ${queryResult.error.message}`);
+      }
+
+      const header = buildListingHeader({ persona, brand, productFormat, filterType });
+      const products = (queryResult.data || [])
+        .map((row) => normalizeRow(row, persona))
+        .sort((left, right) => right.score - left.score);
+
+      return {
+        persona: { ...persona, ...header },
+        products,
+        formulasReviewed: pagination.totalCount,
+        totalCount: pagination.totalCount,
+        totalPages: pagination.totalPages,
+        currentPage: pagination.currentPage,
+        pageSize: pagination.pageSize
+      };
+    }
+
+    const supabase = getSupabaseServerClient();
+    let countQuery = supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .not('overall_score', 'is', null);
+
+    if (brandId) {
+      countQuery = countQuery.eq('brand_id', brandId);
+    } else if (brandValue) {
+      countQuery = countQuery.eq('brand_name', brandValue);
+    }
+    if (productFormatId) {
+      countQuery = countQuery.eq('product_format_id', productFormatId);
+    } else if (productFormatValue) {
+      countQuery = countQuery.eq('product_format', productFormatValue);
+    }
+    if (filterTypeId) {
+      countQuery = countQuery.eq('filter_type_id', filterTypeId);
+    } else if (filterTypeValue) {
+      countQuery = countQuery.eq('filter_type', filterTypeValue);
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) {
+      throw new Error(`Could not count listing products: ${countError.message}`);
+    }
+
+    const pagination = buildPaginationData(count, currentPage, pageSize);
+    const from = (pagination.currentPage - 1) * pagination.pageSize;
+    const to = from + pagination.pageSize - 1;
+    let query = supabase
+      .from('products')
+      .select(
+        'id, slug, product_name, brand_name, product_buy_link, brand_id, product_format_id, filter_type_id, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons, image_links'
+      )
+      .not('overall_score', 'is', null)
+      .order('overall_score', { ascending: false })
+      .range(from, to);
+
+    if (brandId) {
+      query = query.eq('brand_id', brandId);
+    } else if (brandValue) {
+      query = query.eq('brand_name', brandValue);
+    }
+    if (productFormatId) {
+      query = query.eq('product_format_id', productFormatId);
+    } else if (productFormatValue) {
+      query = query.eq('product_format', productFormatValue);
+    }
+    if (filterTypeId) {
+      query = query.eq('filter_type_id', filterTypeId);
+    } else if (filterTypeValue) {
+      query = query.eq('filter_type', filterTypeValue);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Could not load listing products: ${error.message}`);
+    }
+
+    const header = buildListingHeader({ persona: null, brand, productFormat, filterType });
+    const pageMeta = isSingleDimensionListing({ persona: null, brand, productFormat, filterType })
+      ? {
+          meta_title: brand?.metaTitle || productFormat?.metaTitle || filterType?.metaTitle || '',
+          meta_description:
+            brand?.metaDescription || productFormat?.metaDescription || filterType?.metaDescription || ''
+        }
+      : { meta_title: '', meta_description: '' };
+
+    return {
+      persona: { ...header, ...pageMeta },
+      products: (data || []).map(normalizeOverallProduct),
+      formulasReviewed: pagination.totalCount,
+      totalCount: pagination.totalCount,
+      totalPages: pagination.totalPages,
+      currentPage: pagination.currentPage,
+      pageSize: pagination.pageSize,
+      entities: { brand, productFormat, filterType }
+    };
+  },
+  ['listing-page-data'],
+  { revalidate: LISTINGS_REVALIDATE, tags: ['persona-pages', 'overall-sunscreens', 'brands', 'product-formats', 'filter-types'] }
+);
+
+export async function fetchListingPageData(criteria, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) {
+  const safeCriteria = {
+    skinContextRouteSlug: String(criteria?.skinContextRouteSlug || '').trim(),
+    brandSlug: String(criteria?.brandSlug || '').trim(),
+    productFormatSlug: String(criteria?.productFormatSlug || '').trim(),
+    filterTypeSlug: String(criteria?.filterTypeSlug || '').trim()
+  };
+
+  return fetchListingPageDataCached(
+    safeCriteria,
+    normalizePageNumber(requestedPage),
+    normalizePageSize(requestedPageSize)
+  );
+}
+
 const fetchOverallSunscreensCached = unstable_cache(
   async (requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) => {
     const currentPage = normalizePageNumber(requestedPage);
@@ -539,7 +1176,7 @@ const fetchOverallSunscreensCached = unstable_cache(
     const { data, error } = await supabase
       .from('products')
       .select(
-        'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons, image_links'
+        'id, slug, product_name, brand_name, product_buy_link, brand_id, product_format_id, filter_type_id, spf_rating, pa_rating, filter_type, product_format, eco_reef_safety, overall_score, overall_pros, overall_cons, image_links'
       )
       .not('overall_score', 'is', null)
       .order('overall_score', { ascending: false })
@@ -583,6 +1220,9 @@ function normalizeProductDetail(product) {
     productName: product.product_name || 'Unnamed Product',
     brandName: product.brand_name || 'Unknown Brand',
     productBuyLink: String(product.product_buy_link || '').trim(),
+    brandId: product.brand_id || null,
+    productFormatId: product.product_format_id || null,
+    filterTypeId: product.filter_type_id || null,
     spfRating: product.spf_rating || 'SPF N/A',
     paRating: product.pa_rating || 'PA N/A',
     imageLinks: normalizeImageLinks(product.image_links),
@@ -610,7 +1250,7 @@ const fetchProductBySlugCached = unstable_cache(
     const { data, error } = await supabase
       .from('products')
       .select(
-        'id, slug, product_name, brand_name, product_buy_link, spf_rating, pa_rating, total_ingredients, sweat_resistance, ph_value, filter_type, product_format, eco_reef_safety, nano_status, vegan, cruelty_free, overall_score, overall_pros, overall_cons, image_links, created_at'
+        'id, slug, product_name, brand_name, product_buy_link, brand_id, product_format_id, filter_type_id, spf_rating, pa_rating, total_ingredients, sweat_resistance, ph_value, filter_type, product_format, eco_reef_safety, nano_status, vegan, cruelty_free, overall_score, overall_pros, overall_cons, image_links, created_at'
       )
       .eq('slug', productSlug)
       .limit(1);
@@ -850,6 +1490,464 @@ export async function fetchAllProductRoutes() {
   return fetchAllProductRoutesCached();
 }
 
+const fetchListingRouteEntriesCached = unstable_cache(
+  async () => {
+    const [personas, brands, productFormats, filterTypes] = await Promise.all([
+      fetchAllPersonas(),
+      fetchAllBrands(),
+      fetchAllProductFormats(),
+      fetchAllFilterTypes()
+    ]);
+    const supabase = getSupabaseServerClient();
+    const [{ data: products, error: productsError }, { data: skinScores, error: skinScoresError }] = await Promise.all([
+      supabase
+        .from('products')
+        .select('id, brand_id, product_format_id, filter_type_id, overall_score, created_at'),
+      supabase
+        .from('product_skin_scores')
+        .select('persona_id, product_id')
+    ]);
+
+    if (productsError) {
+      throw new Error(`Could not load listing products for sitemap: ${productsError.message}`);
+    }
+
+    if (skinScoresError) {
+      throw new Error(`Could not load persona listing combinations for sitemap: ${skinScoresError.message}`);
+    }
+
+    const brandMap = new Map(brands.map((row) => [row.id, row]));
+    const productFormatMap = new Map(productFormats.map((row) => [row.id, row]));
+    const filterTypeMap = new Map(filterTypes.map((row) => [row.id, row]));
+    const personaMap = new Map(personas.map((row) => [row.id, row]));
+    const productMap = new Map((products || []).map((row) => [row.id, row]));
+    const overallProducts = (products || []).filter((row) => row.overall_score !== null);
+    const entries = [];
+    const seen = new Set();
+    const personaIdsWithProducts = new Set();
+
+    function addEntry(path, lastModified) {
+      if (!path || seen.has(path)) {
+        return;
+      }
+
+      seen.add(path);
+      entries.push({
+        url: `${SITE_URL}${path}`,
+        lastModified: lastModified || new Date()
+      });
+    }
+
+    for (const product of overallProducts) {
+      if (product.brand_id && brandMap.has(product.brand_id)) {
+        addEntry(buildListingPath({ brandSlug: brandMap.get(product.brand_id).slug }), product.created_at);
+      }
+      if (product.product_format_id && productFormatMap.has(product.product_format_id)) {
+        addEntry(buildListingPath({ productFormatSlug: productFormatMap.get(product.product_format_id).slug }), product.created_at);
+      }
+      if (product.filter_type_id && filterTypeMap.has(product.filter_type_id)) {
+        addEntry(buildListingPath({ filterTypeSlug: filterTypeMap.get(product.filter_type_id).slug }), product.created_at);
+      }
+    }
+
+    for (const row of skinScores || []) {
+      const persona = personaMap.get(row.persona_id);
+      const product = productMap.get(row.product_id);
+
+      if (!persona?.route_slug || !product) {
+        continue;
+      }
+
+      personaIdsWithProducts.add(persona.id);
+      addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+
+      if (product.brand_id && brandMap.has(product.brand_id)) {
+        addEntry(
+          buildListingPath({
+            skinContextRouteSlug: persona.route_slug,
+            brandSlug: brandMap.get(product.brand_id).slug
+          }),
+          persona.created_at
+        );
+      }
+
+      if (product.product_format_id && productFormatMap.has(product.product_format_id)) {
+        const formatSlug = productFormatMap.get(product.product_format_id).slug;
+        addEntry(
+          buildListingPath({
+            productFormatSlug: formatSlug,
+            skinContextRouteSlug: persona.route_slug
+          }),
+          persona.created_at
+        );
+
+        if (product.brand_id && brandMap.has(product.brand_id)) {
+          addEntry(
+            buildListingPath({
+              productFormatSlug: formatSlug,
+              skinContextRouteSlug: persona.route_slug,
+              brandSlug: brandMap.get(product.brand_id).slug
+            }),
+            persona.created_at
+          );
+        }
+      }
+
+      if (product.filter_type_id && filterTypeMap.has(product.filter_type_id)) {
+        const filterSlug = filterTypeMap.get(product.filter_type_id).slug;
+        addEntry(
+          buildListingPath({
+            filterTypeSlug: filterSlug,
+            skinContextRouteSlug: persona.route_slug
+          }),
+          persona.created_at
+        );
+
+        if (product.brand_id && brandMap.has(product.brand_id)) {
+          addEntry(
+            buildListingPath({
+              filterTypeSlug: filterSlug,
+              skinContextRouteSlug: persona.route_slug,
+              brandSlug: brandMap.get(product.brand_id).slug
+            }),
+            persona.created_at
+          );
+        }
+      }
+    }
+
+    for (const persona of personas) {
+      if (persona.route_slug && personaIdsWithProducts.has(persona.id)) {
+        addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+      }
+    }
+
+    return entries;
+  },
+  ['listing-route-entries'],
+  { revalidate: PERSONAS_REVALIDATE, tags: ['personas', 'brands', 'product-formats', 'filter-types', 'products', 'product-skin-scores'] }
+);
+
+export async function fetchListingRouteEntries() {
+  return fetchListingRouteEntriesCached();
+}
+
+function buildStaticSitemapEntries() {
+  const now = new Date();
+
+  return [
+    {
+      url: SITE_URL,
+      lastModified: now
+    },
+    {
+      url: `${SITE_URL}/about`,
+      lastModified: now
+    },
+    {
+      url: `${SITE_URL}/how-it-works`,
+      lastModified: now
+    },
+    {
+      url: `${SITE_URL}/legal`,
+      lastModified: now
+    },
+    {
+      url: `${SITE_URL}/sunscreens`,
+      lastModified: now
+    }
+  ];
+}
+
+function createEmptySitemapFamilies() {
+  return {
+    static: [],
+    products: [],
+    'skin-context': [],
+    brands: [],
+    formats: [],
+    filters: [],
+    combinations: []
+  };
+}
+
+function chunkEntries(entries, chunkSize = SITEMAP_CHUNK_SIZE) {
+  const chunks = [];
+
+  for (let index = 0; index < entries.length; index += chunkSize) {
+    chunks.push(entries.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+const fetchSitemapEntriesByFamilyCached = unstable_cache(
+  async () => {
+    const families = createEmptySitemapFamilies();
+    families.static = buildStaticSitemapEntries();
+
+    const [personas, brands, productFormats, filterTypes] = await Promise.all([
+      fetchAllPersonas(),
+      fetchAllBrands(),
+      fetchAllProductFormats(),
+      fetchAllFilterTypes()
+    ]);
+    const supabase = getSupabaseServerClient();
+    const [{ data: products, error: productsError }, { data: skinScores, error: skinScoresError }] = await Promise.all([
+      supabase
+        .from('products')
+        .select(
+          'id, slug, created_at, brand_id, brand_name, product_format_id, product_format, filter_type_id, filter_type, overall_score'
+        ),
+      supabase
+        .from('product_skin_scores')
+        .select('persona_id, product_id')
+    ]);
+
+    if (productsError) {
+      throw new Error(`Could not load sitemap products: ${productsError.message}`);
+    }
+
+    if (skinScoresError) {
+      throw new Error(`Could not load sitemap skin scores: ${skinScoresError.message}`);
+    }
+
+    const entriesByFamily = createEmptySitemapFamilies();
+    entriesByFamily.static = families.static;
+    const seen = new Set();
+    const personaIdsWithProducts = new Set();
+    const productRows = products || [];
+    const skinScoreRows = skinScores || [];
+    const personaMap = new Map(personas.map((row) => [row.id, row]));
+    const brandMap = new Map(
+      brands
+        .filter((row) => row.id)
+        .map((row) => [row.id, row])
+    );
+    const brandSlugByValue = new Map(
+      brands.map((row) => [normalizeLookupValue(row.sourceValue || row.label), row.slug]).filter(([value, slug]) => value && slug)
+    );
+    const productFormatMap = new Map(
+      productFormats
+        .filter((row) => row.id)
+        .map((row) => [row.id, row])
+    );
+    const productFormatSlugByValue = new Map(
+      productFormats
+        .map((row) => [normalizeLookupValue(row.sourceValue || row.label), row.slug])
+        .filter(([value, slug]) => value && slug)
+    );
+    const filterTypeMap = new Map(
+      filterTypes
+        .filter((row) => row.id)
+        .map((row) => [row.id, row])
+    );
+    const filterTypeSlugByValue = new Map(
+      filterTypes
+        .map((row) => [normalizeLookupValue(row.sourceValue || row.label), row.slug])
+        .filter(([value, slug]) => value && slug)
+    );
+    const productMap = new Map(productRows.map((row) => [row.id, row]));
+
+    function addEntry(family, path, lastModified) {
+      if (!SITEMAP_FAMILIES.includes(family) || !path) {
+        return;
+      }
+
+      const url = `${SITE_URL}${path}`;
+      if (seen.has(url)) {
+        return;
+      }
+
+      seen.add(url);
+      entriesByFamily[family].push({
+        url,
+        lastModified: lastModified || new Date()
+      });
+    }
+
+    function getBrandSlug(product) {
+      if (product.brand_id && brandMap.has(product.brand_id)) {
+        return brandMap.get(product.brand_id).slug;
+      }
+
+      return brandSlugByValue.get(normalizeLookupValue(product.brand_name)) || '';
+    }
+
+    function getProductFormatSlug(product) {
+      if (product.product_format_id && productFormatMap.has(product.product_format_id)) {
+        return productFormatMap.get(product.product_format_id).slug;
+      }
+
+      return productFormatSlugByValue.get(normalizeLookupValue(product.product_format)) || '';
+    }
+
+    function getFilterTypeSlug(product) {
+      if (product.filter_type_id && filterTypeMap.has(product.filter_type_id)) {
+        return filterTypeMap.get(product.filter_type_id).slug;
+      }
+
+      return filterTypeSlugByValue.get(normalizeLookupValue(product.filter_type)) || '';
+    }
+
+    for (const product of productRows) {
+      if (product.slug) {
+        addEntry('products', `/sunscreens/${product.slug}`, product.created_at);
+      }
+    }
+
+    const overallProducts = productRows.filter((row) => row.overall_score !== null);
+
+    for (const product of overallProducts) {
+      const brandSlug = getBrandSlug(product);
+      const productFormatSlug = getProductFormatSlug(product);
+      const filterTypeSlug = getFilterTypeSlug(product);
+
+      if (brandSlug) {
+        addEntry('brands', buildListingPath({ brandSlug }), product.created_at);
+      }
+
+      if (productFormatSlug) {
+        addEntry('formats', buildListingPath({ productFormatSlug }), product.created_at);
+      }
+
+      if (filterTypeSlug) {
+        addEntry('filters', buildListingPath({ filterTypeSlug }), product.created_at);
+      }
+    }
+
+    for (const row of skinScoreRows) {
+      const persona = personaMap.get(row.persona_id);
+      const product = productMap.get(row.product_id);
+
+      if (!persona?.route_slug || !product) {
+        continue;
+      }
+
+      const brandSlug = getBrandSlug(product);
+      const productFormatSlug = getProductFormatSlug(product);
+      const filterTypeSlug = getFilterTypeSlug(product);
+
+      personaIdsWithProducts.add(persona.id);
+      addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+
+      if (brandSlug) {
+        addEntry(
+          'combinations',
+          buildListingPath({
+            skinContextRouteSlug: persona.route_slug,
+            brandSlug
+          }),
+          persona.created_at
+        );
+      }
+
+      if (productFormatSlug) {
+        addEntry(
+          'combinations',
+          buildListingPath({
+            productFormatSlug,
+            skinContextRouteSlug: persona.route_slug
+          }),
+          persona.created_at
+        );
+
+        if (brandSlug) {
+          addEntry(
+            'combinations',
+            buildListingPath({
+              productFormatSlug,
+              skinContextRouteSlug: persona.route_slug,
+              brandSlug
+            }),
+            persona.created_at
+          );
+        }
+      }
+
+      if (filterTypeSlug) {
+        addEntry(
+          'combinations',
+          buildListingPath({
+            filterTypeSlug,
+            skinContextRouteSlug: persona.route_slug
+          }),
+          persona.created_at
+        );
+
+        if (brandSlug) {
+          addEntry(
+            'combinations',
+            buildListingPath({
+              filterTypeSlug,
+              skinContextRouteSlug: persona.route_slug,
+              brandSlug
+            }),
+            persona.created_at
+          );
+        }
+      }
+    }
+
+    for (const persona of personas) {
+      if (persona.route_slug && personaIdsWithProducts.has(persona.id)) {
+        addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+      }
+    }
+
+    return entriesByFamily;
+  },
+  ['sitemap-entries-by-family'],
+  {
+    revalidate: PERSONAS_REVALIDATE,
+    tags: ['personas', 'brands', 'product-formats', 'filter-types', 'products', 'product-skin-scores']
+  }
+);
+
+export async function fetchSitemapEntriesByFamily() {
+  return fetchSitemapEntriesByFamilyCached();
+}
+
+export async function fetchSitemapShards() {
+  const entriesByFamily = await fetchSitemapEntriesByFamily();
+
+  return SITEMAP_FAMILIES.flatMap((family) => {
+    const entries = Array.isArray(entriesByFamily[family]) ? entriesByFamily[family] : [];
+    const chunks = chunkEntries(entries);
+
+    return chunks.map((chunkEntriesForFamily, index) => ({
+      family,
+      page: index + 1,
+      entries: chunkEntriesForFamily
+    }));
+  });
+}
+
+export async function fetchSitemapIndexEntries() {
+  const shards = await fetchSitemapShards();
+
+  return shards.map((shard) => ({
+    url: `${SITE_URL}/sitemaps/${shard.family}/${shard.page}.xml`,
+    lastModified:
+      shard.entries.reduce((latest, entry) => {
+        const entryTime = new Date(entry.lastModified || 0).getTime();
+        return entryTime > latest ? entryTime : latest;
+      }, 0) || Date.now()
+  }));
+}
+
+export async function fetchSitemapShard(family, page) {
+  const safeFamily = String(family || '').trim();
+  const safePage = Number.parseInt(String(page || '1'), 10);
+
+  if (!SITEMAP_FAMILIES.includes(safeFamily) || !Number.isFinite(safePage) || safePage < 1) {
+    return null;
+  }
+
+  const shards = await fetchSitemapShards();
+  return shards.find((shard) => shard.family === safeFamily && shard.page === safePage) || null;
+}
+
 export function getDefaultMetadata() {
   return {
     metadataBase: new URL(SITE_URL),
@@ -900,6 +1998,43 @@ export function getPersonaMetadata(persona) {
     twitter: {
       card: 'summary_large_image',
       title,
+      description,
+      images: [DEFAULT_OG_IMAGE]
+    }
+  };
+}
+
+export function getListingMetadata({ persona = null, brand = null, productFormat = null, filterType = null }) {
+  const title = buildListingTitle({ persona, brand, productFormat, filterType }) || SITE_NAME;
+  const description =
+    String(persona?.meta_description || '').trim() ||
+    String(persona?.page_description || '').trim() ||
+    buildListingDescription({ persona: null, brand, productFormat, filterType }) ||
+    DEFAULT_DESCRIPTION;
+  const pathname = buildListingPath({
+    skinContextRouteSlug: persona?.route_slug || '',
+    brandSlug: brand?.slug || '',
+    productFormatSlug: productFormat?.slug || '',
+    filterTypeSlug: filterType?.slug || ''
+  });
+
+  return {
+    title: `${title} | ${SITE_NAME}`,
+    description,
+    alternates: {
+      canonical: pathname
+    },
+    openGraph: {
+      type: 'website',
+      siteName: SITE_NAME,
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      url: `${SITE_URL}${pathname}`,
+      images: [DEFAULT_OG_IMAGE]
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | ${SITE_NAME}`,
       description,
       images: [DEFAULT_OG_IMAGE]
     }
@@ -978,4 +2113,11 @@ export function getProductMetadata(product) {
   };
 }
 
-export { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL };
+export {
+  buildListingPath,
+  DEFAULT_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+  SITEMAP_CHUNK_SIZE,
+  SITEMAP_FAMILIES
+};

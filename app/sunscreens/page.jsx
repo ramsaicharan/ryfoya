@@ -3,7 +3,7 @@ import Pagination from '../../src/components/Pagination';
 import PersonaChoiceSidebar from '../../src/components/PersonaChoiceSidebar';
 import ProductCard from '../../src/components/ProductCard';
 import {
-  fetchAllPersonas,
+  fetchListingFiltersData,
   fetchOverallSunscreens,
   getSunscreensMetadata
 } from '../../src/lib/site-data';
@@ -20,30 +20,29 @@ function parsePageParam(value) {
 export default async function SunscreensPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const currentPage = parsePageParam(resolvedSearchParams?.page);
-  const [{ products, formulasReviewed, totalPages, currentPage: resolvedPage }, personas] = await Promise.all([
+  const [{ products, formulasReviewed, totalPages, currentPage: resolvedPage }, filterData] = await Promise.all([
     fetchOverallSunscreens(currentPage),
-    fetchAllPersonas()
+    fetchListingFiltersData()
   ]);
   const pagePersona = {
     page_title: 'Best Sunscreens',
     page_description:
       'Browse the strongest overall sunscreen picks ranked by overall score, with product-level pros and cons.'
   };
-  const filterPages = personas.map((page) => ({
-    id: page.id,
-    page_slug: page.page_slug,
-    route_slug: page.route_slug,
-    skin_type: page.skin_type,
-    skin_condition: page.skin_condition,
-    age: page.age,
-    skin_tone: page.skin_tone
-  }));
 
   return (
     <>
       <Header persona={pagePersona} formulasReviewed={formulasReviewed} />
       <main className="listing-layout listing-layout--full">
-        <PersonaChoiceSidebar pages={filterPages} currentPersona={null} />
+        <PersonaChoiceSidebar
+          filterData={filterData}
+          currentFilters={{
+            skinContextRouteSlug: '',
+            brandSlug: '',
+            productFormatSlug: '',
+            filterTypeSlug: ''
+          }}
+        />
         <div className="listing-content">
           {products.length > 0 ? (
             <>

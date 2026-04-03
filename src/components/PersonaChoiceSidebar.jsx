@@ -1,16 +1,22 @@
-const FILTER_GROUPS = [
+const PERSONA_FILTER_GROUPS = [
   { key: 'skin_type', label: 'Skin Type' },
   { key: 'skin_condition', label: 'Skin Condition' },
   { key: 'age', label: 'Age' },
   { key: 'skin_tone', label: 'Skin Tone' }
 ];
 
+const LOOKUP_FILTER_GROUPS = [
+  { key: 'product_format_slug', label: 'Product Format' },
+  { key: 'filter_type_slug', label: 'Filter Type' },
+  { key: 'brand_slug', label: 'Brand' }
+];
+
 function normalizeValue(value) {
   return String(value || '').trim();
 }
 
-function getSelection(persona) {
-  return FILTER_GROUPS.reduce((accumulator, group) => {
+function getPersonaSelection(persona) {
+  return PERSONA_FILTER_GROUPS.reduce((accumulator, group) => {
     accumulator[group.key] = normalizeValue(persona?.[group.key]);
     return accumulator;
   }, {});
@@ -40,19 +46,19 @@ function normalizeSensitiveSelection(selection) {
 
 function isSensitiveOnlyFallbackSelection(selection) {
   return (
-    !normalizeValue(selection.skin_type)
-    && normalizeValue(selection.skin_condition) === 'Sensitive'
-    && !normalizeValue(selection.age)
-    && !normalizeValue(selection.skin_tone)
+    !normalizeValue(selection.skin_type) &&
+    normalizeValue(selection.skin_condition) === 'Sensitive' &&
+    !normalizeValue(selection.age) &&
+    !normalizeValue(selection.skin_tone)
   );
 }
 
-function isSelectionEmpty(selection) {
-  return FILTER_GROUPS.every((group) => !normalizeValue(selection[group.key]));
+function hasPersonaSelection(selection) {
+  return PERSONA_FILTER_GROUPS.some((group) => normalizeValue(selection[group.key]));
 }
 
 function matchesSelection(page, selection, ignoredKey = '') {
-  return FILTER_GROUPS.every((group) => {
+  return PERSONA_FILTER_GROUPS.every((group) => {
     if (group.key === ignoredKey) {
       return true;
     }
@@ -69,7 +75,7 @@ function matchesSelection(page, selection, ignoredKey = '') {
 function findExactPersona(pages, selection) {
   return (
     pages.find((page) =>
-      FILTER_GROUPS.every(
+      PERSONA_FILTER_GROUPS.every(
         (group) => normalizeValue(page[group.key]) === normalizeValue(selection[group.key])
       )
     ) || null
@@ -77,14 +83,14 @@ function findExactPersona(pages, selection) {
 }
 
 function countFilledFields(page) {
-  return FILTER_GROUPS.reduce(
+  return PERSONA_FILTER_GROUPS.reduce(
     (count, group) => count + (normalizeValue(page[group.key]) ? 1 : 0),
     0
   );
 }
 
 function countSameFieldMatches(page, selection) {
-  return FILTER_GROUPS.reduce((count, group) => {
+  return PERSONA_FILTER_GROUPS.reduce((count, group) => {
     const selectedValue = normalizeValue(selection[group.key]);
     if (!selectedValue) {
       return count;
@@ -95,9 +101,9 @@ function countSameFieldMatches(page, selection) {
 }
 
 function countAnyFieldMatches(page, selection) {
-  const pageValues = FILTER_GROUPS.map((group) => normalizeValue(page[group.key])).filter(Boolean);
+  const pageValues = PERSONA_FILTER_GROUPS.map((group) => normalizeValue(page[group.key])).filter(Boolean);
 
-  return FILTER_GROUPS.reduce((count, group) => {
+  return PERSONA_FILTER_GROUPS.reduce((count, group) => {
     const selectedValue = normalizeValue(selection[group.key]);
     if (!selectedValue) {
       return count;
@@ -108,14 +114,14 @@ function countAnyFieldMatches(page, selection) {
 }
 
 function findBestFallbackPersona(pages, selection) {
-  const selectedValues = FILTER_GROUPS.map((group) => normalizeValue(selection[group.key])).filter(Boolean);
+  const selectedValues = PERSONA_FILTER_GROUPS.map((group) => normalizeValue(selection[group.key])).filter(Boolean);
 
   if (selectedValues.length === 0) {
     return null;
   }
 
   const candidates = pages.filter((page) => {
-    const pageValues = FILTER_GROUPS.map((group) => normalizeValue(page[group.key])).filter(Boolean);
+    const pageValues = PERSONA_FILTER_GROUPS.map((group) => normalizeValue(page[group.key])).filter(Boolean);
     return selectedValues.every((selectedValue) => pageValues.includes(selectedValue));
   });
 
@@ -151,16 +157,6 @@ function findBestFallbackPersona(pages, selection) {
   })[0];
 }
 
-function getPersonaHref(page) {
-  const routeSlug = normalizeValue(page?.route_slug);
-  if (routeSlug) {
-    return `/sunscreens/best/${routeSlug}`;
-  }
-
-  const pageSlug = normalizeValue(page?.page_slug);
-  return pageSlug ? `/${pageSlug}` : '/sunscreens';
-}
-
 function buildCounterpartSelection(selection, fromKey, toKey) {
   const value = normalizeValue(selection[fromKey]);
 
@@ -172,7 +168,7 @@ function buildCounterpartSelection(selection, fromKey, toKey) {
 }
 
 function findCounterpartPersona(pages, selection) {
-  const filledGroups = FILTER_GROUPS.filter((group) => normalizeValue(selection[group.key]));
+  const filledGroups = PERSONA_FILTER_GROUPS.filter((group) => normalizeValue(selection[group.key]));
 
   if (filledGroups.length !== 1) {
     return null;
@@ -193,19 +189,67 @@ function findCounterpartPersona(pages, selection) {
   return null;
 }
 
-function getSelectionHref(pages, selection) {
+function getSelectedPersona(pages, selection) {
   const normalizedSelection = normalizeSensitiveSelection(selection);
 
-  if (isSelectionEmpty(normalizedSelection)) {
-    return '/sunscreens';
+  if (!hasPersonaSelection(normalizedSelection)) {
+    return null;
   }
 
-  const persona =
-    findExactPersona(pages, normalizedSelection)
-    || findBestFallbackPersona(pages, normalizedSelection)
-    || findCounterpartPersona(pages, normalizedSelection);
+  return (
+    findExactPersona(pages, normalizedSelection) ||
+    findBestFallbackPersona(pages, normalizedSelection) ||
+    findCounterpartPersona(pages, normalizedSelection)
+  );
+}
 
-  return persona ? getPersonaHref(persona) : '/sunscreens';
+function buildListingHref(pages, selection) {
+  const personaSelection = PERSONA_FILTER_GROUPS.reduce((accumulator, group) => {
+    accumulator[group.key] = normalizeValue(selection[group.key]);
+    return accumulator;
+  }, {});
+
+  const persona = getSelectedPersona(pages, personaSelection);
+  const brandSlug = normalizeValue(selection.brand_slug);
+  const productFormatSlug = normalizeValue(selection.product_format_slug);
+  const filterTypeSlug = normalizeValue(selection.filter_type_slug);
+  const skinContextRouteSlug = normalizeValue(persona?.route_slug);
+
+  if (filterTypeSlug) {
+    let href = `/sunscreens/best/filter/${filterTypeSlug}`;
+    if (skinContextRouteSlug) {
+      href += `/${skinContextRouteSlug}`;
+      if (brandSlug) {
+        href += `/brand/${brandSlug}`;
+      }
+    }
+    return href;
+  }
+
+  if (productFormatSlug) {
+    let href = `/sunscreens/best/format/${productFormatSlug}`;
+    if (skinContextRouteSlug) {
+      href += `/${skinContextRouteSlug}`;
+      if (brandSlug) {
+        href += `/brand/${brandSlug}`;
+      }
+    }
+    return href;
+  }
+
+  if (skinContextRouteSlug) {
+    let href = `/sunscreens/best/${skinContextRouteSlug}`;
+    if (brandSlug) {
+      href += `/brand/${brandSlug}`;
+    }
+    return href;
+  }
+
+  if (brandSlug) {
+    return `/sunscreens/best/brand/${brandSlug}`;
+  }
+
+  return '/sunscreens';
 }
 
 function formatOptionLabel(groupKey, value) {
@@ -221,7 +265,7 @@ function formatOptionLabel(groupKey, value) {
   return safeValue;
 }
 
-function buildNextSelection(selection, groupKey, value) {
+function buildNextPersonaSelection(selection, groupKey, value) {
   const normalizedValue = normalizeValue(value);
 
   if (isSensitiveOnlyFallbackSelection(selection)) {
@@ -249,7 +293,7 @@ function buildNextSelection(selection, groupKey, value) {
   };
 }
 
-function buildGroupOptions(pages, selection, groupKey) {
+function buildPersonaGroupOptions(pages, selection, groupKey) {
   const values = [];
   const seen = new Set();
 
@@ -263,8 +307,8 @@ function buildGroupOptions(pages, selection, groupKey) {
       continue;
     }
 
-    const nextSelection = buildNextSelection(selection, groupKey, value);
-    const href = getSelectionHref(pages, nextSelection);
+    const nextSelection = buildNextPersonaSelection(selection, groupKey, value);
+    const href = buildListingHref(pages, nextSelection);
 
     seen.add(value);
     values.push({
@@ -278,12 +322,47 @@ function buildGroupOptions(pages, selection, groupKey) {
   return values;
 }
 
+function buildLookupGroupOptions(pages, selection, entities, key) {
+  const normalizedEntities = Array.isArray(entities) ? entities : [];
+
+  return normalizedEntities.map((entity) => {
+    const nextSelection = {
+      ...selection,
+      [key]: normalizeValue(entity.slug)
+    };
+
+    if (key === 'product_format_slug') {
+      nextSelection.filter_type_slug = '';
+    }
+
+    if (key === 'filter_type_slug') {
+      nextSelection.product_format_slug = '';
+    }
+
+    return {
+      value: entity.slug,
+      href: buildListingHref(pages, nextSelection),
+      isActive: normalizeValue(selection[key]) === normalizeValue(entity.slug),
+      label: entity.label
+    };
+  });
+}
+
+function isBrandGroupVisible(selection) {
+  return hasPersonaSelection(selection) || (!normalizeValue(selection.product_format_slug) && !normalizeValue(selection.filter_type_slug));
+}
+
 function FiltersContent({
+  personas,
+  brands,
+  productFormats,
+  filterTypes,
   activeSelections,
   clearAllHref,
-  selection,
-  validPages
+  selection
 }) {
+  const brandVisible = isBrandGroupVisible(selection);
+
   return (
     <>
       <div className="persona-filters__selected-head">
@@ -309,8 +388,49 @@ function FiltersContent({
       ) : null}
 
       <div className="persona-filters__groups">
-        {FILTER_GROUPS.map((group) => {
-          const options = buildGroupOptions(validPages, selection, group.key);
+        {PERSONA_FILTER_GROUPS.map((group) => {
+          const options = buildPersonaGroupOptions(personas, selection, group.key);
+
+          if (options.length === 0) {
+            return null;
+          }
+
+          return (
+            <section className="persona-filter-group" key={group.key}>
+              <h3 className="persona-filter-group__title">{group.label}</h3>
+              <div className="persona-filter-group__options">
+                {options.map((option) => (
+                  <a
+                    href={option.href}
+                    className={`persona-option ${option.isActive ? 'persona-option--selected' : ''}`}
+                    key={`${group.key}-${option.value}`}
+                  >
+                    <span className="persona-option__box" aria-hidden="true">
+                      {option.isActive ? '✓' : ''}
+                    </span>
+                    <span className="persona-option__label">{option.label}</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {LOOKUP_FILTER_GROUPS.map((group) => {
+          if (group.key === 'brand_slug' && !brandVisible) {
+            return null;
+          }
+
+          const options = buildLookupGroupOptions(
+            personas,
+            selection,
+            group.key === 'brand_slug'
+              ? brands
+              : group.key === 'product_format_slug'
+                ? productFormats
+                : filterTypes,
+            group.key
+          );
 
           if (options.length === 0) {
             return null;
@@ -341,15 +461,45 @@ function FiltersContent({
   );
 }
 
-export default function PersonaChoiceSidebar({ pages, currentPersona }) {
-  const validPages = (pages || []).filter((page) => page?.route_slug || page?.page_slug);
-  const selection = getSelection(currentPersona);
+export default function PersonaChoiceSidebar({ filterData, currentFilters }) {
+  const personas = (filterData?.personas || []).filter((page) => page?.route_slug || page?.page_slug);
+  const brands = filterData?.brands || [];
+  const productFormats = filterData?.productFormats || [];
+  const filterTypes = filterData?.filterTypes || [];
+  const currentPersona =
+    personas.find((persona) => normalizeValue(persona.route_slug) === normalizeValue(currentFilters?.skinContextRouteSlug)) ||
+    null;
+  const personaSelection = getPersonaSelection(currentPersona);
+  const selection = {
+    ...personaSelection,
+    brand_slug: normalizeValue(currentFilters?.brandSlug),
+    product_format_slug: normalizeValue(currentFilters?.productFormatSlug),
+    filter_type_slug: normalizeValue(currentFilters?.filterTypeSlug)
+  };
   const clearAllHref = '/sunscreens';
-  const activeSelections = FILTER_GROUPS.map((group) => ({
-    key: group.key,
-    label: formatOptionLabel(group.key, selection[group.key]),
-    href: getSelectionHref(validPages, { ...selection, [group.key]: '' })
-  })).filter((item) => item.label);
+  const activeSelections = [
+    ...PERSONA_FILTER_GROUPS.map((group) => ({
+      key: group.key,
+      label: formatOptionLabel(group.key, selection[group.key]),
+      href: buildListingHref(personas, { ...selection, [group.key]: '' })
+    })).filter((item) => item.label),
+    ...LOOKUP_FILTER_GROUPS.map((group) => {
+      const value = normalizeValue(selection[group.key]);
+      const entityList =
+        group.key === 'brand_slug'
+          ? brands
+          : group.key === 'product_format_slug'
+            ? productFormats
+            : filterTypes;
+      const entity = entityList.find((item) => normalizeValue(item.slug) === value);
+
+      return {
+        key: group.key,
+        label: entity?.label || '',
+        href: buildListingHref(personas, { ...selection, [group.key]: '' })
+      };
+    }).filter((item) => item.label)
+  ];
   const mobileSheetId = 'persona-filter-sheet';
 
   return (
@@ -357,21 +507,19 @@ export default function PersonaChoiceSidebar({ pages, currentPersona }) {
       <aside className="persona-filters persona-filters--desktop">
         <div className="persona-filters__sticky">
           <FiltersContent
+            personas={personas}
+            brands={brands}
+            productFormats={productFormats}
+            filterTypes={filterTypes}
             activeSelections={activeSelections}
             clearAllHref={clearAllHref}
             selection={selection}
-            validPages={validPages}
           />
         </div>
       </aside>
 
       <div className="persona-filters-mobile">
-        <input
-          id={mobileSheetId}
-          className="persona-sheet__toggle"
-          type="checkbox"
-          aria-hidden="true"
-        />
+        <input id={mobileSheetId} className="persona-sheet__toggle" type="checkbox" aria-hidden="true" />
         <label htmlFor={mobileSheetId} className="persona-filters-mobile__trigger">
           Filters
           {activeSelections.length > 0 ? (
@@ -387,10 +535,13 @@ export default function PersonaChoiceSidebar({ pages, currentPersona }) {
           </label>
           <div className="persona-sheet__body">
             <FiltersContent
+              personas={personas}
+              brands={brands}
+              productFormats={productFormats}
+              filterTypes={filterTypes}
               activeSelections={activeSelections}
               clearAllHref={clearAllHref}
               selection={selection}
-              validPages={validPages}
             />
           </div>
         </div>
