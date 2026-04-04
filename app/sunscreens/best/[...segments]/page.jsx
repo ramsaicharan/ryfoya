@@ -29,10 +29,26 @@ function parseListingSegments(segments) {
     return null;
   }
 
-  const [first, second, third, fourth, fifth] = safeSegments;
+  const [first, second, third, fourth, fifth, sixth, seventh] = safeSegments;
 
   if (first === 'brand') {
-    return safeSegments.length === 2 ? { brandSlug: second } : null;
+    if (safeSegments.length === 2) {
+      return { brandSlug: second };
+    }
+
+    if (safeSegments.length === 3) {
+      return { brandSlug: second, skinContextRouteSlug: third };
+    }
+
+    if (safeSegments.length === 4 && third === 'format') {
+      return { brandSlug: second, productFormatSlug: fourth };
+    }
+
+    if (safeSegments.length === 5 && third === 'format') {
+      return { brandSlug: second, productFormatSlug: fourth, skinContextRouteSlug: fifth };
+    }
+
+    return null;
   }
 
   if (first === 'format') {
@@ -54,6 +70,18 @@ function parseListingSegments(segments) {
   if (first === 'filter') {
     if (safeSegments.length === 2) {
       return { filterTypeSlug: second };
+    }
+
+    if (safeSegments.length === 4 && third === 'brand') {
+      return { filterTypeSlug: second, brandSlug: fourth };
+    }
+
+    if (safeSegments.length === 6 && third === 'brand' && fifth === 'format') {
+      return { filterTypeSlug: second, brandSlug: fourth, productFormatSlug: sixth };
+    }
+
+    if (safeSegments.length === 7 && third === 'brand' && fifth === 'format') {
+      return { filterTypeSlug: second, brandSlug: fourth, productFormatSlug: sixth, skinContextRouteSlug: seventh };
     }
 
     if (safeSegments.length === 3) {

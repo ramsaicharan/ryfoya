@@ -57,11 +57,25 @@ function buildListingPath({
 
   if (filterType) {
     let path = buildFilterTypePath(filterType);
+    if (brand) {
+      path += `/brand/${brand}`;
+    }
+    if (productFormat) {
+      path += `/format/${productFormat}`;
+    }
     if (skinContext) {
       path += `/${skinContext}`;
-      if (brand) {
-        path += `/brand/${brand}`;
-      }
+    }
+    return path;
+  }
+
+  if (brand) {
+    let path = buildBrandPath(brand);
+    if (productFormat) {
+      path += `/format/${productFormat}`;
+    }
+    if (skinContext) {
+      path += `/${skinContext}`;
     }
     return path;
   }
@@ -70,23 +84,12 @@ function buildListingPath({
     let path = buildFormatPath(productFormat);
     if (skinContext) {
       path += `/${skinContext}`;
-      if (brand) {
-        path += `/brand/${brand}`;
-      }
     }
     return path;
   }
 
   if (skinContext) {
-    let path = `/sunscreens/best/${skinContext}`;
-    if (brand) {
-      path += `/brand/${brand}`;
-    }
-    return path;
-  }
-
-  if (brand) {
-    return buildBrandPath(brand);
+    return `/sunscreens/best/${skinContext}`;
   }
 
   return '/sunscreens';

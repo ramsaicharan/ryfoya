@@ -215,41 +215,12 @@ function buildListingHref(pages, selection) {
   const filterTypeSlug = normalizeValue(selection.filter_type_slug);
   const skinContextRouteSlug = normalizeValue(persona?.route_slug);
 
-  if (filterTypeSlug) {
-    let href = `/sunscreens/best/filter/${filterTypeSlug}`;
-    if (skinContextRouteSlug) {
-      href += `/${skinContextRouteSlug}`;
-      if (brandSlug) {
-        href += `/brand/${brandSlug}`;
-      }
-    }
-    return href;
-  }
-
-  if (productFormatSlug) {
-    let href = `/sunscreens/best/format/${productFormatSlug}`;
-    if (skinContextRouteSlug) {
-      href += `/${skinContextRouteSlug}`;
-      if (brandSlug) {
-        href += `/brand/${brandSlug}`;
-      }
-    }
-    return href;
-  }
-
-  if (skinContextRouteSlug) {
-    let href = `/sunscreens/best/${skinContextRouteSlug}`;
-    if (brandSlug) {
-      href += `/brand/${brandSlug}`;
-    }
-    return href;
-  }
-
-  if (brandSlug) {
-    return `/sunscreens/best/brand/${brandSlug}`;
-  }
-
-  return '/sunscreens';
+  return buildListingPath({
+    skinContextRouteSlug,
+    brandSlug,
+    productFormatSlug,
+    filterTypeSlug
+  });
 }
 
 function formatOptionLabel(groupKey, value) {
@@ -549,3 +520,4 @@ export default function PersonaChoiceSidebar({ filterData, currentFilters }) {
     </>
   );
 }
+import { buildListingPath } from '../lib/site-data';
