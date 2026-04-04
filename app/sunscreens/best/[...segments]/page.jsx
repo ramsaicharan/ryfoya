@@ -76,6 +76,10 @@ function parseListingSegments(segments) {
       return { filterTypeSlug: second, brandSlug: fourth };
     }
 
+    if (safeSegments.length === 5 && third === 'brand') {
+      return { filterTypeSlug: second, brandSlug: fourth, skinContextRouteSlug: fifth };
+    }
+
     if (safeSegments.length === 6 && third === 'brand' && fifth === 'format') {
       return { filterTypeSlug: second, brandSlug: fourth, productFormatSlug: sixth };
     }
