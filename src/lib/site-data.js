@@ -48,7 +48,8 @@ function buildListingPath({
   skinContextRouteSlug = '',
   brandSlug = '',
   productFormatSlug = '',
-  filterTypeSlug = ''
+  filterTypeSlug = '',
+  persona = null
 }) {
   const skinContext = String(skinContextRouteSlug || '').trim();
   const brand = String(brandSlug || '').trim();
@@ -169,8 +170,8 @@ function buildTitleContext(persona) {
   const age = String(persona?.age || '').trim();
   const skinCondition = String(persona?.skin_condition || '').trim();
   const skinType = String(persona?.skin_type || '').trim();
-  const skinTypeWithSuffix = skinType ? (/skin$/i.test(skinType) ? skinType : `${skinType} Skin`) : '';
-  const tail = [skinCondition, skinTypeWithSuffix].filter(Boolean).join(' ').trim();
+  const skinContextParts = [skinCondition, skinType].filter(Boolean);
+  const tail = skinContextParts.length > 0 ? `${skinContextParts.join(' ')} Skin`.trim() : '';
 
   if (age && tail) {
     return `for ${age} with ${tail}`;
@@ -731,7 +732,21 @@ export async function fetchPersonaByRouteSlug(routeSlug) {
     return null;
   }
 
-  return fetchPersonaByRouteSlugCached(safeRouteSlug);
+  const exactMatch = await fetchPersonaByRouteSlugCached(safeRouteSlug);
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const alternateSlug = safeRouteSlug.endsWith('-skin')
+    ? safeRouteSlug.slice(0, -5)
+    : `${safeRouteSlug}-skin`;
+
+  if (!alternateSlug || alternateSlug === safeRouteSlug) {
+    return null;
+  }
+
+  return fetchPersonaByRouteSlugCached(alternateSlug);
 }
 
 function findLookupBySlug(rows, slug) {
@@ -1562,13 +1577,14 @@ const fetchListingRouteEntriesCached = unstable_cache(
       }
 
       personaIdsWithProducts.add(persona.id);
-      addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+      addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug, persona }), persona.created_at);
 
       if (product.brand_id && brandMap.has(product.brand_id)) {
         addEntry(
           buildListingPath({
             skinContextRouteSlug: persona.route_slug,
-            brandSlug: brandMap.get(product.brand_id).slug
+            brandSlug: brandMap.get(product.brand_id).slug,
+            persona
           }),
           persona.created_at
         );
@@ -1579,7 +1595,8 @@ const fetchListingRouteEntriesCached = unstable_cache(
         addEntry(
           buildListingPath({
             productFormatSlug: formatSlug,
-            skinContextRouteSlug: persona.route_slug
+            skinContextRouteSlug: persona.route_slug,
+            persona
           }),
           persona.created_at
         );
@@ -1589,7 +1606,8 @@ const fetchListingRouteEntriesCached = unstable_cache(
             buildListingPath({
               productFormatSlug: formatSlug,
               skinContextRouteSlug: persona.route_slug,
-              brandSlug: brandMap.get(product.brand_id).slug
+              brandSlug: brandMap.get(product.brand_id).slug,
+              persona
             }),
             persona.created_at
           );
@@ -1601,7 +1619,8 @@ const fetchListingRouteEntriesCached = unstable_cache(
         addEntry(
           buildListingPath({
             filterTypeSlug: filterSlug,
-            skinContextRouteSlug: persona.route_slug
+            skinContextRouteSlug: persona.route_slug,
+            persona
           }),
           persona.created_at
         );
@@ -1611,7 +1630,8 @@ const fetchListingRouteEntriesCached = unstable_cache(
             buildListingPath({
               filterTypeSlug: filterSlug,
               skinContextRouteSlug: persona.route_slug,
-              brandSlug: brandMap.get(product.brand_id).slug
+              brandSlug: brandMap.get(product.brand_id).slug,
+              persona
             }),
             persona.created_at
           );
@@ -1621,7 +1641,7 @@ const fetchListingRouteEntriesCached = unstable_cache(
 
     for (const persona of personas) {
       if (persona.route_slug && personaIdsWithProducts.has(persona.id)) {
-        addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+        addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug, persona }), persona.created_at);
       }
     }
 
@@ -1832,14 +1852,15 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
       const filterTypeSlug = getFilterTypeSlug(product);
 
       personaIdsWithProducts.add(persona.id);
-      addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+      addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug, persona }), persona.created_at);
 
       if (brandSlug) {
         addEntry(
           'combinations',
           buildListingPath({
             skinContextRouteSlug: persona.route_slug,
-            brandSlug
+            brandSlug,
+            persona
           }),
           persona.created_at
         );
@@ -1850,7 +1871,8 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
           'combinations',
           buildListingPath({
             productFormatSlug,
-            skinContextRouteSlug: persona.route_slug
+            skinContextRouteSlug: persona.route_slug,
+            persona
           }),
           persona.created_at
         );
@@ -1861,7 +1883,8 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
             buildListingPath({
               productFormatSlug,
               skinContextRouteSlug: persona.route_slug,
-              brandSlug
+              brandSlug,
+              persona
             }),
             persona.created_at
           );
@@ -1873,7 +1896,8 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
           'combinations',
           buildListingPath({
             filterTypeSlug,
-            skinContextRouteSlug: persona.route_slug
+            skinContextRouteSlug: persona.route_slug,
+            persona
           }),
           persona.created_at
         );
@@ -1884,7 +1908,8 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
             buildListingPath({
               filterTypeSlug,
               skinContextRouteSlug: persona.route_slug,
-              brandSlug
+              brandSlug,
+              persona
             }),
             persona.created_at
           );
@@ -1894,7 +1919,7 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
 
     for (const persona of personas) {
       if (persona.route_slug && personaIdsWithProducts.has(persona.id)) {
-        addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug }), persona.created_at);
+        addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug, persona }), persona.created_at);
       }
     }
 
@@ -2018,7 +2043,8 @@ export function getListingMetadata({ persona = null, brand = null, productFormat
     skinContextRouteSlug: persona?.route_slug || '',
     brandSlug: brand?.slug || '',
     productFormatSlug: productFormat?.slug || '',
-    filterTypeSlug: filterType?.slug || ''
+    filterTypeSlug: filterType?.slug || '',
+    persona
   });
 
   return {

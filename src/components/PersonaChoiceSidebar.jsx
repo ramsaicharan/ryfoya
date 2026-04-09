@@ -219,7 +219,8 @@ function buildListingHref(pages, selection) {
     skinContextRouteSlug,
     brandSlug,
     productFormatSlug,
-    filterTypeSlug
+    filterTypeSlug,
+    persona
   });
 }
 
@@ -227,10 +228,6 @@ function formatOptionLabel(groupKey, value) {
   const safeValue = normalizeValue(value);
   if (!safeValue) {
     return '';
-  }
-
-  if (groupKey === 'skin_type' && !/skin/i.test(safeValue)) {
-    return `${safeValue} Skin`;
   }
 
   return safeValue;
