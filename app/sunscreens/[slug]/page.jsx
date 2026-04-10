@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import JsonLd from '../../../src/components/JsonLd';
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
-import { fetchProductBySlug, fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
+import { fetchProductBySlug, fetchProductDetailPageData, getProductJsonLd, getProductMetadata } from '../../../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,9 +156,11 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
   const performanceFactors = buildPerformanceFactors(evaluations);
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
   const galleryImages = product.imageLinks || [];
+  const productJsonLd = getProductJsonLd(product, topMatches);
 
   return (
     <div className="product-detail-page">
+      <JsonLd data={productJsonLd} />
       <main className="detail-shell">
         <section className="detail-layout">
           <div className="detail-gallery">

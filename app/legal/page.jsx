@@ -1,12 +1,11 @@
 import { Scale, AlertTriangle, FileText, ShieldAlert, ShoppingCart } from 'lucide-react';
+import { buildAlternates } from '../../src/lib/site-data';
 
 export const metadata = {
   title: 'Legal & Disclaimer',
   description:
     'Read Ryfoya disclaimers on methodology, formulation changes, medical advice, and affiliate relationships.',
-  alternates: {
-    canonical: '/legal'
-  }
+  alternates: buildAlternates('/legal')
 };
 
 const LEGAL_SECTIONS = [

@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { Heart, Shield, Sparkles, Microscope, ArrowRight } from 'lucide-react';
+import { buildAlternates } from '../../src/lib/site-data';
 
 export const metadata = {
   title: 'About Ryfoya',
   description:
     "Learn why Ryfoya exists, how we evaluate skincare, and why we focus on clear, evidence-based sunscreen recommendations.",
-  alternates: {
-    canonical: '/about'
-  }
+  alternates: buildAlternates('/about')
 };
 
 const PRINCIPLES = [

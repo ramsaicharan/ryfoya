@@ -1,15 +1,18 @@
 import { notFound } from 'next/navigation';
 import Header from '../../../../src/components/Header';
+import JsonLd from '../../../../src/components/JsonLd';
 import Pagination from '../../../../src/components/Pagination';
 import PersonaChoiceSidebar from '../../../../src/components/PersonaChoiceSidebar';
 import ProductCard from '../../../../src/components/ProductCard';
 import {
+  buildListingPath,
   fetchBrandBySlug,
   fetchFilterTypeBySlug,
   fetchListingFiltersData,
   fetchListingPageData,
   fetchPersonaByRouteSlug,
   fetchProductFormatBySlug,
+  getListingJsonLd,
   getListingMetadata
 } from '../../../../src/lib/site-data';
 
@@ -164,9 +167,27 @@ export default async function ListingRoutePage({ params, searchParams }) {
   }
 
   const { persona, products, formulasReviewed, totalPages, currentPage: resolvedPage } = pageData;
+  const listingPath = buildListingPath({
+    skinContextRouteSlug: criteria.skinContextRouteSlug || '',
+    brandSlug: criteria.brandSlug || '',
+    productFormatSlug: criteria.productFormatSlug || '',
+    filterTypeSlug: criteria.filterTypeSlug || '',
+    persona
+  });
+  const listingJsonLd = getListingJsonLd({
+    title: persona?.page_title,
+    description: persona?.page_description,
+    pathname: listingPath,
+    products,
+    startPosition: (resolvedPage - 1) * 24 + 1,
+    scoreLabel: criteria.skinContextRouteSlug
+      ? `Score for ${persona?.page_title || 'Skin Context'}`
+      : 'Overall Score'
+  });
 
   return (
     <>
+      <JsonLd data={listingJsonLd} />
       <Header persona={persona} formulasReviewed={formulasReviewed} />
       <main className="listing-layout listing-layout--full">
         <PersonaChoiceSidebar

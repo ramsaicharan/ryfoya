@@ -1976,14 +1976,211 @@ export async function fetchSitemapShard(family, page) {
   return shards.find((shard) => shard.family === safeFamily && shard.page === safePage) || null;
 }
 
+function buildAlternates(pathname) {
+  const canonical = String(pathname || '/').trim() || '/';
+
+  return {
+    canonical,
+    languages: {
+      'en-IN': canonical,
+      'x-default': canonical
+    }
+  };
+}
+
+function toAbsoluteUrl(pathname) {
+  const safePath = String(pathname || '/').trim() || '/';
+  return safePath.startsWith('http') ? safePath : `${SITE_URL}${safePath}`;
+}
+
+function formatSchemaScore(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return '';
+  }
+
+  return `${numericValue.toFixed(0)}/100`;
+}
+
+function buildStructuredProductEntry(product, { position = 1, scoreLabel = 'Overall Score' } = {}) {
+  const pathname = product?.productSlug ? `/sunscreens/${product.productSlug}` : '/sunscreens';
+  const fullName =
+    [String(product?.brandName || '').trim(), String(product?.productName || '').trim()]
+      .filter(Boolean)
+      .join(' ')
+      .trim() || String(product?.productName || '').trim() || 'Sunscreen';
+  const description =
+    String(product?.pros?.[0] || '').trim() ||
+    String(product?.skinFitText || '').trim() ||
+    'Detailed sunscreen recommendation with formula analysis and scoring.';
+  const additionalProperty = [
+    product?.score || product?.score === 0
+      ? {
+          '@type': 'PropertyValue',
+          name: scoreLabel,
+          value: formatSchemaScore(product.score)
+        }
+      : null,
+    String(product?.filterType || '').trim() && product.filterType !== 'Filter Type N/A'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'Filter Type',
+          value: product.filterType
+        }
+      : null,
+    String(product?.productFormat || '').trim() && product.productFormat !== 'Format N/A'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'Product Format',
+          value: product.productFormat
+        }
+      : null,
+    String(product?.spfRating || '').trim() && product.spfRating !== 'SPF N/A'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'SPF',
+          value: product.spfRating
+        }
+      : null,
+    String(product?.paRating || '').trim() && product.paRating !== 'PA N/A'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'PA Rating',
+          value: product.paRating
+        }
+      : null
+  ].filter(Boolean);
+
+  return {
+    '@type': 'ListItem',
+    position,
+    item: {
+      '@type': 'Product',
+      name: fullName,
+      description,
+      brand: {
+        '@type': 'Brand',
+        name: String(product?.brandName || '').trim() || 'Unknown Brand'
+      },
+      ...(Array.isArray(product?.imageLinks) && product.imageLinks.length > 0
+        ? { image: product.imageLinks[0] }
+        : {}),
+      url: toAbsoluteUrl(pathname),
+      ...(additionalProperty.length > 0 ? { additionalProperty } : {})
+    }
+  };
+}
+
+export function getListingJsonLd({
+  title,
+  description,
+  pathname,
+  products,
+  startPosition = 1,
+  scoreLabel = 'Overall Score'
+}) {
+  const safeProducts = Array.isArray(products) ? products : [];
+
+  if (safeProducts.length === 0) {
+    return null;
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: String(title || '').trim() || SITE_NAME,
+    description: String(description || '').trim() || DEFAULT_DESCRIPTION,
+    url: toAbsoluteUrl(pathname),
+    numberOfItems: safeProducts.length,
+    itemListElement: safeProducts.map((product, index) =>
+      buildStructuredProductEntry(product, {
+        position: startPosition + index,
+        scoreLabel
+      })
+    )
+  };
+}
+
+export function getProductJsonLd(product, skinMatches = []) {
+  const safeMatches = Array.isArray(skinMatches) ? skinMatches : [];
+  const pathname = product?.productSlug ? `/sunscreens/${product.productSlug}` : '/sunscreens';
+  const fullName =
+    [String(product?.brandName || '').trim(), String(product?.productName || '').trim()]
+      .filter(Boolean)
+      .join(' ')
+      .trim() || String(product?.productName || '').trim() || 'Sunscreen';
+  const description =
+    String(product?.overallPros?.[0] || '').trim() ||
+    'Detailed sunscreen breakdown covering formula facts, skin-context matches, and ingredient data.';
+  const additionalProperty = [
+    product?.overallScore || product?.overallScore === 0
+      ? {
+          '@type': 'PropertyValue',
+          name: 'Overall Score',
+          value: formatSchemaScore(product.overallScore)
+        }
+      : null,
+    String(product?.filterType || '').trim() && product.filterType !== 'Not specified'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'Filter Type',
+          value: product.filterType
+        }
+      : null,
+    String(product?.productFormat || '').trim() && product.productFormat !== 'Not specified'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'Product Format',
+          value: product.productFormat
+        }
+      : null,
+    String(product?.spfRating || '').trim() && product.spfRating !== 'SPF N/A'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'SPF',
+          value: product.spfRating
+        }
+      : null,
+    String(product?.paRating || '').trim() && product.paRating !== 'PA N/A'
+      ? {
+          '@type': 'PropertyValue',
+          name: 'PA Rating',
+          value: product.paRating
+        }
+      : null,
+    safeMatches[0]
+      ? {
+          '@type': 'PropertyValue',
+          name: `Skin Match Score${safeMatches[0].contextLabel ? ` for ${safeMatches[0].contextLabel}` : ''}`,
+          value: formatSchemaScore(safeMatches[0].score || 0)
+        }
+      : null
+  ].filter(Boolean);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: fullName,
+    description,
+    brand: {
+      '@type': 'Brand',
+      name: String(product?.brandName || '').trim() || 'Unknown Brand'
+    },
+    ...(Array.isArray(product?.imageLinks) && product.imageLinks.length > 0
+      ? { image: product.imageLinks }
+      : {}),
+    url: toAbsoluteUrl(pathname),
+    ...(additionalProperty.length > 0 ? { additionalProperty } : {})
+  };
+}
+
 export function getDefaultMetadata() {
   return {
     metadataBase: new URL(SITE_URL),
     title: SITE_NAME,
     description: DEFAULT_DESCRIPTION,
-    alternates: {
-      canonical: '/'
-    },
+    alternates: buildAlternates('/'),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
@@ -2012,9 +2209,7 @@ export function getPersonaMetadata(persona) {
   return {
     title,
     description,
-    alternates: {
-      canonical: pathname
-    },
+    alternates: buildAlternates(pathname),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
@@ -2050,9 +2245,7 @@ export function getListingMetadata({ persona = null, brand = null, productFormat
   return {
     title: `${title} | ${SITE_NAME}`,
     description,
-    alternates: {
-      canonical: pathname
-    },
+    alternates: buildAlternates(pathname),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
@@ -2078,9 +2271,7 @@ export function getSunscreensMetadata() {
   return {
     title,
     description,
-    alternates: {
-      canonical: '/sunscreens'
-    },
+    alternates: buildAlternates('/sunscreens'),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
@@ -2122,9 +2313,7 @@ export function getProductMetadata(product) {
   return {
     title,
     description,
-    alternates: {
-      canonical: pathname
-    },
+    alternates: buildAlternates(pathname),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
@@ -2143,6 +2332,7 @@ export function getProductMetadata(product) {
 }
 
 export {
+  buildAlternates,
   buildListingPath,
   DEFAULT_DESCRIPTION,
   SITE_NAME,

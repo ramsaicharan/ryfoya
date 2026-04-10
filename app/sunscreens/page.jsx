@@ -1,10 +1,12 @@
 import Header from '../../src/components/Header';
+import JsonLd from '../../src/components/JsonLd';
 import Pagination from '../../src/components/Pagination';
 import PersonaChoiceSidebar from '../../src/components/PersonaChoiceSidebar';
 import ProductCard from '../../src/components/ProductCard';
 import {
   fetchListingFiltersData,
   fetchOverallSunscreens,
+  getListingJsonLd,
   getSunscreensMetadata
 } from '../../src/lib/site-data';
 
@@ -29,9 +31,18 @@ export default async function SunscreensPage({ searchParams }) {
     page_description:
       'Browse the strongest overall sunscreen picks ranked by overall score, with product-level pros and cons.'
   };
+  const listingJsonLd = getListingJsonLd({
+    title: pagePersona.page_title,
+    description: pagePersona.page_description,
+    pathname: '/sunscreens',
+    products,
+    startPosition: (resolvedPage - 1) * 24 + 1,
+    scoreLabel: 'Overall Score'
+  });
 
   return (
     <>
+      <JsonLd data={listingJsonLd} />
       <Header persona={pagePersona} formulasReviewed={formulasReviewed} />
       <main className="listing-layout listing-layout--full">
         <PersonaChoiceSidebar

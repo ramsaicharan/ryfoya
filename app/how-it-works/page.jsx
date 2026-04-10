@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { buildAlternates } from '../../src/lib/site-data';
 import {
   Search,
   ShieldCheck,
@@ -18,9 +19,7 @@ export const metadata = {
   title: 'How Ryfoya Works',
   description:
     'See how Ryfoya evaluates ingredients, product performance, safety, and skin-context fit before recommending sunscreens.',
-  alternates: {
-    canonical: '/how-it-works'
-  }
+  alternates: buildAlternates('/how-it-works')
 };
 
 const agents = [
