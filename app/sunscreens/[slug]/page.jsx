@@ -411,18 +411,26 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
                   const statusLabel = getPerformanceStatusLabel(factor);
 
                   return (
-                    <div key={factor.id} className={`detail-factor detail-factor--${factor.status}`}>
-                      <div className="detail-factor__top">
+                    <details key={factor.id} className={`detail-factor detail-factor--${factor.status}`}>
+                      <summary className="detail-factor__top">
+                        
                         <div className="detail-factor__title-row">
-                          <span className={`detail-factor__icon detail-factor__icon--${factor.status}`}>
-                            <Icon size={16} aria-hidden="true" />
-                          </span>
-                          <h3 className="detail-factor__name">{factor.name}</h3>
+                          <div className="detail-factor__title-left">
+                            <span className={`detail-factor__icon detail-factor__icon--${factor.status}`}>
+                              <Icon size={16} aria-hidden="true" />
+                            </span>
+
+                            <h3 className="detail-factor__name">{factor.name}</h3>
+                          </div>
+
+                          <ChevronDown className="detail-factor__chevron" aria-hidden="true" />
                         </div>
+
                         <div className="detail-factor__score">
                           <span className={`detail-factor__status detail-factor__status--${factor.status}`}>
                             {statusLabel}
                           </span>
+
                           <div className="detail-scorebar" aria-hidden="true">
                             {[1, 2, 3, 4, 5].map((dot) => (
                               <span
@@ -436,9 +444,11 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
                             ))}
                           </div>
                         </div>
-                      </div>
+
+                      </summary>
+
                       <p className="detail-factor__desc">{factor.shortDesc}</p>
-                    </div>
+                    </details>
                   );
                 })}
               </div>
