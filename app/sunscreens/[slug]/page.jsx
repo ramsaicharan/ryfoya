@@ -1,5 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+  Activity,
+  ChevronDown,
+  Droplets,
+  Eye,
+  Shield,
+  Sparkles,
+  Sun,
+  Wind
+} from 'lucide-react';
 import JsonLd from '../../../src/components/JsonLd';
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
@@ -20,9 +30,9 @@ function getEvaluationMetric(evaluations, agentName, metricKey) {
   return {
     score: Math.max(0, Math.min(5, numericScore || 0)),
     shortDesc:
+      String(metric?.evidence || '').trim() ||
       String(metric?.rationale || '').trim() ||
       String(metric?.flags || '').trim() ||
-      String(metric?.evidence || '').trim() ||
       'No evaluation details available.'
   };
 }
@@ -66,6 +76,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'spf',
       name: 'SPF Level',
       score: spfLevel.score,
+      displayScore: spfLevel.score,
       shortDesc: spfLevel.shortDesc,
       status: getPositiveMetricStatus(spfLevel.score)
     },
@@ -73,6 +84,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'uva',
       name: 'Broad Spectrum',
       score: broadSpectrum.score,
+      displayScore: broadSpectrum.score,
       shortDesc: broadSpectrum.shortDesc,
       status: getPositiveMetricStatus(broadSpectrum.score)
     },
@@ -80,6 +92,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'water',
       name: 'Sweat Resistance',
       score: waterResistance.score,
+      displayScore: waterResistance.score,
       shortDesc: waterResistance.shortDesc,
       status: getPositiveMetricStatus(waterResistance.score)
     },
@@ -87,6 +100,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'photoStability',
       name: 'Photo Stability',
       score: photostability.score,
+      displayScore: photostability.score,
       shortDesc: photostability.shortDesc,
       status: getPositiveMetricStatus(photostability.score)
     },
@@ -94,6 +108,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'visible-light',
       name: 'Visible Light',
       score: visibleLight.score,
+      displayScore: visibleLight.score,
       shortDesc: visibleLight.shortDesc,
       status: getPositiveMetricStatus(visibleLight.score)
     },
@@ -101,6 +116,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'irritation',
       name: 'Irritation Risk',
       score: irritationRisk.score,
+      displayScore: irritationRisk.score > 0 ? 6 - irritationRisk.score : 0,
       shortDesc: irritationRisk.shortDesc,
       status: getRiskMetricStatus(irritationRisk.score)
     },
@@ -108,6 +124,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'comedogenicity',
       name: 'Pore Clogging',
       score: poreClogging.score,
+      displayScore: poreClogging.score > 0 ? 6 - poreClogging.score : 0,
       shortDesc: poreClogging.shortDesc,
       status: getRiskMetricStatus(poreClogging.score)
     },
@@ -115,6 +132,7 @@ function buildPerformanceFactors(evaluations) {
       id: 'white-cast',
       name: 'White Cast',
       score: whiteCast.score,
+      displayScore: whiteCast.score > 0 ? 6 - whiteCast.score : 0,
       shortDesc: whiteCast.shortDesc,
       status: getRiskMetricStatus(whiteCast.score)
     }
@@ -125,7 +143,130 @@ function buildIngredientDetail(ingredient) {
   if (ingredient.isFlagged && ingredient.firstFlagDescription) {
     return ingredient.firstFlagDescription;
   }
-  return '';
+  // return ingredient.detailDescription || '';
+}
+
+function getOverallScoreStatus(score) {
+  if (score >= 85) {
+    return 'Excellent';
+  }
+
+  if (score >= 70) {
+    return 'Strong';
+  }
+
+  if (score >= 50) {
+    return 'Moderate';
+  }
+
+  return 'Needs Review';
+}
+
+const performanceIconMap = {
+  spf: Shield,
+  uva: Sun,
+  water: Droplets,
+  photoStability: Sparkles,
+  'visible-light': Eye,
+  irritation: Activity,
+  comedogenicity: Wind,
+  'white-cast': Eye
+};
+
+function getPerformanceStatusLabel(factor) {
+  const riskMetricIds = new Set(['irritation', 'comedogenicity', 'white-cast']);
+
+  if (riskMetricIds.has(factor.id)) {
+    if (factor.status === 'good') {
+      return 'Low Risk';
+    }
+
+    if (factor.status === 'warning') {
+      return 'Medium Risk';
+    }
+
+    return 'High Risk';
+  }
+
+  if (factor.status === 'good') {
+    return 'Excellent';
+  }
+
+  if (factor.status === 'warning') {
+    return 'Fair';
+  }
+
+  return 'Poor';
+}
+
+function buildPerfectMatches(matches) {
+  const iconCycle = [Droplets, Activity, Sparkles, Shield];
+  const toneCycle = ['blue', 'emerald', 'purple', 'amber'];
+
+  return (matches || [])
+    .filter((match) => Number(match.matchPercent || 0) > 80)
+    .slice(0, 6)
+    .map((match, index) => ({
+      id: match.id || `${match.contextLabel}-${index}`,
+      label: `${match.contextLabel} Skin`,
+      href: match.pageHref || '/sunscreens',
+      Icon: iconCycle[index % iconCycle.length],
+      tone: toneCycle[index % toneCycle.length]
+    }));
+}
+
+function getIngredientTone(ingredient, isActive) {
+  if (ingredient.isFlagged) {
+    return 'rose';
+  }
+
+  return isActive ? 'emerald' : 'slate';
+}
+
+function getIngredientBadge(ingredient, fallbackLabel) {
+  return ingredient.source || fallbackLabel;
+}
+
+function IngredientRow({ ingredient, isActive }) {
+  const detail = buildIngredientDetail(ingredient);
+  const tone = getIngredientTone(ingredient, isActive);
+  const badge = getIngredientBadge(ingredient, isActive ? 'UV Filter' : 'Skincare');
+  const badgeText = 
+    (isActive ? ingredient.protection_spectrums : ingredient.category) ||
+    (isActive ? 'Active filter' : 'Supporting ingredient');
+  const meta =
+    (isActive ? ingredient.filterType : ingredient.sub_category) ||
+    (isActive ? 'Active filter' : 'Supporting ingredient');
+  const summaryContent = (
+    <>
+      <span className="ingredient-row__main">
+        <span className={`ingredient-row__dot ingredient-row__dot--${tone}`} />
+        <span className="ingredient-row__copy">
+          <span className="ingredient-row__name">{ingredient.name} {detail ? <ChevronDown className="ingredient-row__chevron" aria-hidden="true" /> : null}</span>
+          <span className="ingredient-row__meta">{meta}</span>
+        </span>
+      </span>
+      <span className="ingredient-row__side">
+        <span className={`ingredient-row__badge ingredient-row__badge--${tone}`}>{badgeText}</span>
+        
+      </span>
+    </>
+  );
+
+  if (!detail) {
+    return (
+      <div className={`ingredient-row ingredient-row--${tone}`}>
+        <div className="ingredient-row__summary">{summaryContent}</div>
+      </div>
+    );
+  }
+
+  return (
+    <details className={`ingredient-row ingredient-row--${tone}`}>
+      <summary className="ingredient-row__summary">{summaryContent}</summary>
+      <p className="ingredient-row__detail">{detail}</p>
+    </details>
+  );
 }
 
 export async function generateMetadata({ params }) {
@@ -157,6 +298,9 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
   const galleryImages = product.imageLinks || [];
   const productJsonLd = getProductJsonLd(product, topMatches);
+  const overallScore = Math.max(0, Math.min(100, Math.round(Number(product.overallScore) || 0)));
+  const overallScoreStatus = getOverallScoreStatus(overallScore);
+  const perfectMatches = buildPerfectMatches(topMatches);
 
   return (
     <div className="product-detail-page">
@@ -207,6 +351,32 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
                 <span className="detail-badge detail-badge--lime">{product.filterType}</span>
                 <span className="detail-badge detail-badge--lime">{product.productFormat}</span>
               </div>
+
+              <div className="detail-overall-score">
+                <div className="detail-overall-score__value">{overallScore}</div>
+                <div className="detail-overall-score__copy">
+                  <div className="detail-overall-score__headline">
+                    <span className="detail-overall-score__status">{overallScoreStatus}</span>
+                    <span className="detail-overall-score__pill">Overall Rating</span>
+                  </div>
+                  <span className="detail-overall-score__note">Based on formula analysis</span>
+                </div>
+              </div>
+
+              {perfectMatches.length > 0 ? (
+                <section className="detail-perfect-match" aria-labelledby="perfect-match-title">
+                  <h2 id="perfect-match-title" className="detail-perfect-match__title">Most Suitable For</h2>
+                  <div className="detail-perfect-match__list">
+                    {perfectMatches.map(({ id, label, href, Icon, tone }) => (
+                      <Link key={id} href={href} className={`detail-perfect-match__pill detail-perfect-match__pill--${tone}`}>
+                        <Icon className="detail-perfect-match__icon" aria-hidden="true" />
+                        <span>{label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
               {product.productBuyLink ? (
                 <a
                   className="detail-buy-link"
@@ -235,114 +405,78 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
             <section className="detail-block">
               <h2 className="detail-block__title">Performance Scores</h2>
               <div className="detail-factors">
-                {performanceFactors.map((factor) => (
-                  <div key={factor.id} className="detail-factor">
-                    <div className="detail-factor__copy">
-                      <div className="detail-factor__name">{factor.name}</div>
-                      <div className={`detail-factor__desc detail-factor__desc--${factor.status}`}>
-                        {factor.shortDesc}
+                {performanceFactors.map((factor) => {
+                  const Icon = performanceIconMap[factor.id] || Shield;
+                  const statusLabel = getPerformanceStatusLabel(factor);
+
+                  return (
+                    <div key={factor.id} className={`detail-factor detail-factor--${factor.status}`}>
+                      <div className="detail-factor__top">
+                        <div className="detail-factor__title-row">
+                          <span className={`detail-factor__icon detail-factor__icon--${factor.status}`}>
+                            <Icon size={16} aria-hidden="true" />
+                          </span>
+                          <h3 className="detail-factor__name">{factor.name}</h3>
+                        </div>
+                        <div className="detail-factor__score">
+                          <span className={`detail-factor__status detail-factor__status--${factor.status}`}>
+                            {statusLabel}
+                          </span>
+                          <div className="detail-scorebar" aria-hidden="true">
+                            {[1, 2, 3, 4, 5].map((dot) => (
+                              <span
+                                key={`${factor.id}-${dot}`}
+                                className={`detail-scorebar__dot ${
+                                  dot <= factor.displayScore
+                                    ? `detail-scorebar__dot--${factor.status}`
+                                    : 'detail-scorebar__dot--off'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       </div>
+                      <p className="detail-factor__desc">{factor.shortDesc}</p>
                     </div>
-                    <div className="detail-scorebar" aria-hidden="true">
-                      {[1, 2, 3, 4, 5].map((dot) => (
-                        <span
-                          key={`${factor.id}-${dot}`}
-                          className={`detail-scorebar__dot ${
-                            dot <= factor.score
-                              ? `detail-scorebar__dot--${factor.status}`
-                              : 'detail-scorebar__dot--off'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
-
-            
 
             <hr className="detail-divider" />
 
             <section className="detail-block">
-              <details className="ingredients-accordion">
-                <summary className="ingredients-accordion__summary">
-                  <span>Ingredients Analysis</span>
-                  <span className="ingredients-accordion__chevron">▾</span>
-                </summary>
+              <div className="ingredients-analysis">
+                <h2 className="ingredients-analysis__heading">Ingredients Analysis</h2>
 
-                <div className="ingredients-accordion__body">
-                  <div className="ingredients-section">
-                    <h3 className="ingredients-section__title">Active Filters</h3>
-                    <div className="ingredient-tags">
+                <div className="ingredients-analysis__sections">
+                  <section className="ingredients-analysis__section">
+                    <h3 className="ingredients-analysis__title">Active Filters</h3>
+                    <div className="ingredient-list">
                       {activeIngredients.length > 0 ? (
                         activeIngredients.map((ingredient) => (
-                          ingredient.isFlagged ? (
-                            <details
-                              key={ingredient.id}
-                              className="ingredient-tag ingredient-tag--flagged"
-                            >
-                              <summary className="ingredient-tag__summary">
-                                <span className="ingredient-tag__name">{ingredient.name}</span>
-                                {ingredient.shortDescription ? (
-                                  <span className="ingredient-tag__desc">{ingredient.shortDescription}</span>
-                                ) : null}
-                              </summary>
-                              <div className="ingredient-tag__details">{buildIngredientDetail(ingredient)}</div>
-                            </details>
-                          ) : (
-                            <div key={ingredient.id} className="ingredient-tag ingredient-tag--active ingredient-tag--static">
-                              <div className="ingredient-tag__summary">
-                                <span className="ingredient-tag__name">{ingredient.name}</span>
-                                {ingredient.shortDescription ? (
-                                  <span className="ingredient-tag__desc">{ingredient.shortDescription}</span>
-                                ) : null}
-                              </div>
-                            </div>
-                          )
+                          <IngredientRow key={ingredient.id} ingredient={ingredient} isActive />
                         ))
                       ) : (
                         <div className="detail-empty-state">No active filter rows are available yet.</div>
                       )}
                     </div>
-                  </div>
+                  </section>
 
-                  <div className="ingredients-section">
-                    <h3 className="ingredients-section__title">Key Inactives</h3>
-                    <div className="ingredient-tags">
+                  <section className="ingredients-analysis__section">
+                    <h3 className="ingredients-analysis__title">Key Inactive Ingredients</h3>
+                    <div className="ingredient-list">
                       {inactiveIngredients.length > 0 ? (
                         inactiveIngredients.map((ingredient) => (
-                          ingredient.isFlagged ? (
-                            <details
-                              key={ingredient.id}
-                              className="ingredient-tag ingredient-tag--flagged"
-                            >
-                              <summary className="ingredient-tag__summary">
-                                <span className="ingredient-tag__name">{ingredient.name}</span>
-                                {ingredient.shortDescription ? (
-                                  <span className="ingredient-tag__desc">{ingredient.shortDescription}</span>
-                                ) : null}
-                              </summary>
-                              <div className="ingredient-tag__details">{buildIngredientDetail(ingredient)}</div>
-                            </details>
-                          ) : (
-                            <div key={ingredient.id} className="ingredient-tag ingredient-tag--inactive ingredient-tag--static">
-                              <div className="ingredient-tag__summary">
-                                <span className="ingredient-tag__name">{ingredient.name}</span>
-                                {ingredient.shortDescription ? (
-                                  <span className="ingredient-tag__desc">{ingredient.shortDescription}</span>
-                                ) : null}
-                              </div>
-                            </div>
-                          )
+                          <IngredientRow key={ingredient.id} ingredient={ingredient} isActive={false} />
                         ))
                       ) : (
                         <div className="detail-empty-state">No supporting ingredient rows are available yet.</div>
                       )}
                     </div>
-                  </div>
+                  </section>
                 </div>
-              </details>
+              </div>
             </section>
           </div>
         </section>

@@ -1402,6 +1402,13 @@ const fetchProductIngredientsCached = unstable_cache(
       const flags = normalizeFlags(analysis?.flags);
       const shortDescription = buildIngredientSummary(analysis, Boolean(ingredientRow.is_active));
       const detailDescription = buildIngredientDetails(analysis);
+      const filterType = String(analysis?.filter_type || '').trim();
+      // const protection_spectrums = String(analysis?.protection_spectrums || '').trim();
+      const protection_spectrums = Array.isArray(analysis?.protection_spectrums)
+        ? analysis.protection_spectrums.join(' / ')   // or ' · '
+        : '';
+      const category = String(analysis?.category || '').trim();
+      const sub_category = String(analysis?.sub_category || '').trim();
 
       return {
         id: ingredientRow.id,
@@ -1412,6 +1419,10 @@ const fetchProductIngredientsCached = unstable_cache(
         concentration: ingredientRow.concentration || null,
         isActive: Boolean(ingredientRow.is_active),
         source: formatProductValue(ingredientRow.classification_source, ''),
+        filterType,
+        protection_spectrums,
+        category,
+        sub_category,
         shortDescription,
         detailDescription,
         flags,
