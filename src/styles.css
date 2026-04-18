@@ -2660,7 +2660,7 @@ svg {
 }
 
 .detail-shell {
-  max-width: 1180px;
+  max-width: 90%;
   margin: 0 auto;
   padding: 48px var(--gap-h) 0;
 }
