@@ -378,6 +378,7 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
               ) : null}
 
               {product.productBuyLink ? (
+                <div>
                 <a
                   className="detail-buy-link"
                   href={product.productBuyLink}
@@ -385,7 +386,7 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
                   rel="noopener noreferrer"
                 >
                 Buy on Amazon
-                </a>
+                </a></div>
               ) : null}
             </div>
 
