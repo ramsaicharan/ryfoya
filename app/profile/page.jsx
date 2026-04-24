@@ -29,6 +29,7 @@ export default async function ProfilePage({ searchParams }) {
   const complete = !isProfileIncomplete(profile);
   const saved = String(resolvedSearchParams?.saved || '') === '1';
   const error = String(resolvedSearchParams?.error || '').trim();
+  const displayName = String(profile?.full_name || user.user_metadata?.full_name || '').trim();
 
   return (
     <main className="profile-page">
@@ -46,7 +47,7 @@ export default async function ProfilePage({ searchParams }) {
           <div className="profile-card__top">
             <div>
               <h2 className="profile-card__title">Skin preferences</h2>
-              <p className="profile-card__meta">{user.email}</p>
+              <p className="profile-card__meta">{displayName ? `${displayName} · ${user.email}` : user.email}</p>
             </div>
             <span className={`profile-status ${complete ? 'profile-status--complete' : 'profile-status--incomplete'}`}>
               {complete ? 'Complete' : 'Incomplete'}

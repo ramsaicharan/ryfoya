@@ -36,18 +36,30 @@ function buildLoginRedirect(params) {
     query.set('next', params.next);
   }
 
+  if (params.mode) {
+    query.set('mode', params.mode);
+  }
+
   return `/login${query.toString() ? `?${query.toString()}` : ''}`;
 }
 
 async function getRequestOrigin() {
   const headersList = await headers();
-  const origin = headersList.get('origin') || getPublicSiteUrl();
+  const forwardedHost = headersList.get('x-forwarded-host') || headersList.get('host');
+  const forwardedProto =
+    headersList.get('x-forwarded-proto') || (forwardedHost?.includes('localhost') ? 'http' : 'https');
 
-  if (/^https?:\/\//i.test(origin)) {
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`.replace(/\/+$/, '');
+  }
+
+  const origin = headersList.get('origin');
+
+  if (origin) {
     return origin.replace(/\/+$/, '');
   }
 
-  return `https://${origin.replace(/\/+$/, '')}`;
+  return getPublicSiteUrl();
 }
 
 export async function loginWithPassword(formData) {
@@ -56,14 +68,14 @@ export async function loginWithPassword(formData) {
   const next = getSafeNext(getFormValue(formData, 'next'));
 
   if (!email || !password) {
-    redirect(buildLoginRedirect({ error: 'Enter your email and password.', next }));
+    redirect(buildLoginRedirect({ error: 'Enter your email and password.', next, mode: 'login' }));
   }
 
   const supabase = await createSupabaseAuthServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect(buildLoginRedirect({ error: error.message, next }));
+    redirect(buildLoginRedirect({ error: error.message, next, mode: 'login' }));
   }
 
   revalidatePath('/', 'layout');
@@ -71,16 +83,22 @@ export async function loginWithPassword(formData) {
 }
 
 export async function signUpWithPassword(formData) {
+  const fullName = getFormValue(formData, 'full_name');
   const email = getFormValue(formData, 'email');
   const password = getFormValue(formData, 'password');
+  const confirmPassword = getFormValue(formData, 'confirm_password');
   const next = getSafeNext(getFormValue(formData, 'next'));
 
-  if (!email || !password) {
-    redirect(buildLoginRedirect({ error: 'Enter your email and password.', next }));
+  if (!fullName || !email || !password || !confirmPassword) {
+    redirect(buildLoginRedirect({ error: 'Enter your name, email, and password.', next, mode: 'signup' }));
   }
 
   if (password.length < 6) {
-    redirect(buildLoginRedirect({ error: 'Password must be at least 6 characters.', next }));
+    redirect(buildLoginRedirect({ error: 'Password must be at least 6 characters.', next, mode: 'signup' }));
+  }
+
+  if (password !== confirmPassword) {
+    redirect(buildLoginRedirect({ error: 'Passwords do not match.', next, mode: 'signup' }));
   }
 
   const origin = await getRequestOrigin();
@@ -89,12 +107,15 @@ export async function signUpWithPassword(formData) {
     email,
     password,
     options: {
+      data: {
+        full_name: fullName
+      },
       emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`
     }
   });
 
   if (error) {
-    redirect(buildLoginRedirect({ error: error.message, next }));
+    redirect(buildLoginRedirect({ error: error.message, next, mode: 'signup' }));
   }
 
   revalidatePath('/', 'layout');
@@ -106,7 +127,8 @@ export async function signUpWithPassword(formData) {
   redirect(
     buildLoginRedirect({
       message: 'Check your email to confirm your account, then log in.',
-      next
+      next,
+      mode: 'login'
     })
   );
 }
@@ -146,6 +168,7 @@ export async function saveProfilePreferences(formData) {
     redirect('/login?next=/profile');
   }
 
+  const fullName = getFormValue(formData, 'full_name');
   const preferenceValues = PREFERENCE_FIELDS.reduce((values, field) => {
     const choice = getFormValue(formData, `${field}_choice`);
     const other = getFormValue(formData, `${field}_other`);
@@ -160,6 +183,7 @@ export async function saveProfilePreferences(formData) {
     {
       user_id: user.id,
       email: user.email || '',
+      full_name: fullName,
       ...preferenceValues,
       updated_at: new Date().toISOString()
     },

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import LoginAuthPanel from '../../src/components/LoginAuthPanel';
 import { loginWithPassword, signInWithGoogle, signUpWithPassword } from '../../src/lib/authActions';
 import { getCurrentUser } from '../../src/lib/supabaseAuthServer';
 
@@ -23,6 +24,7 @@ export default async function LoginPage({ searchParams }) {
   const next = getSafeNext(resolvedSearchParams?.next);
   const error = String(resolvedSearchParams?.error || '').trim();
   const message = String(resolvedSearchParams?.message || '').trim();
+  const mode = String(resolvedSearchParams?.mode || '').trim() === 'signup' ? 'signup' : 'login';
 
   if (user) {
     redirect(next);
@@ -40,55 +42,15 @@ export default async function LoginPage({ searchParams }) {
           </p>
         </div>
 
-        <div className="auth-card">
-          {error ? <div className="auth-alert auth-alert--error">{error}</div> : null}
-          {message ? <div className="auth-alert auth-alert--success">{message}</div> : null}
-
-          <form action={signInWithGoogle} className="auth-form">
-            <input type="hidden" name="next" value={next} />
-            <button className="auth-google" type="submit">
-              Continue with Google
-            </button>
-          </form>
-
-          <div className="auth-divider">
-            <span>or use email</span>
-          </div>
-
-          <div className="auth-grid">
-            <form action={loginWithPassword} className="auth-form">
-              <input type="hidden" name="next" value={next} />
-              <h2 className="auth-form__title">Log in</h2>
-              <label className="auth-field">
-                <span>Email</span>
-                <input type="email" name="email" autoComplete="email" required />
-              </label>
-              <label className="auth-field">
-                <span>Password</span>
-                <input type="password" name="password" autoComplete="current-password" required />
-              </label>
-              <button className="auth-submit" type="submit">
-                Log in
-              </button>
-            </form>
-
-            <form action={signUpWithPassword} className="auth-form auth-form--soft">
-              <input type="hidden" name="next" value={next} />
-              <h2 className="auth-form__title">Sign up</h2>
-              <label className="auth-field">
-                <span>Email</span>
-                <input type="email" name="email" autoComplete="email" required />
-              </label>
-              <label className="auth-field">
-                <span>Password</span>
-                <input type="password" name="password" autoComplete="new-password" minLength={6} required />
-              </label>
-              <button className="auth-submit auth-submit--purple" type="submit">
-                Create account
-              </button>
-            </form>
-          </div>
-        </div>
+        <LoginAuthPanel
+          next={next}
+          error={error}
+          message={message}
+          initialMode={mode}
+          loginAction={loginWithPassword}
+          signUpAction={signUpWithPassword}
+          googleAction={signInWithGoogle}
+        />
       </section>
     </main>
   );

@@ -59,6 +59,21 @@ function ProfilePreferencesForm({ profile, options, action }) {
 
   return (
     <form action={action} className="profile-form">
+      <div className="profile-form__identity">
+        <label className="profile-field" htmlFor="profile-full-name">
+          <span className="profile-field__label">Name</span>
+          <input
+            id="profile-full-name"
+            className="profile-field__control"
+            type="text"
+            name="full_name"
+            defaultValue={profile?.full_name || ''}
+            autoComplete="name"
+            placeholder="Your name"
+          />
+        </label>
+      </div>
+
       <div className="profile-form__grid">
         {FIELDS.map((field) => {
           const fieldState = values[field.key] || { choice: '', other: '' };
@@ -76,7 +91,7 @@ function ProfilePreferencesForm({ profile, options, action }) {
                 onChange={(event) => updateField(field.key, { choice: event.target.value })}
                 className="profile-field__control"
               >
-                <option value="">Select {field.label.toLowerCase()}</option>
+                <option value="">No selection</option>
                 {fieldOptions.map((option) => (
                   <option value={option} key={option}>
                     {option}

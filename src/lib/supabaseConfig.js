@@ -20,11 +20,26 @@ export function getSupabaseConfig() {
   };
 }
 
+function normalizeSiteUrl(value) {
+  const normalized = String(value || '').trim().replace(/\/+$/, '');
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  return `https://${normalized}`;
+}
+
 export function getPublicSiteUrl(fallback = 'http://localhost:3000') {
-  return (
+  return normalizeSiteUrl(
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.SITE_URL ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL ||
     fallback
-  ).replace(/\/+$/, '');
+  );
 }

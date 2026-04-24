@@ -15,7 +15,7 @@ function isProfileIncomplete(profile) {
     return true;
   }
 
-  return ['skin_type', 'skin_condition', 'age', 'skin_tone'].some(
+  return ['skin_type', 'skin_condition', 'age', 'skin_tone'].every(
     (field) => !String(profile[field] || '').trim()
   );
 }

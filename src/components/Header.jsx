@@ -33,7 +33,7 @@ function Header({ persona, formulasReviewed }) {
     <header className="site-header">
       <div className="wrap">
         <span className="header__eyebrow">
-          Doctor-led recommendations · Dermatologist tested · {formulasReviewed} formulas reviewed
+          Doctor-led recommendations · Dermatologist tested · 48 formulas reviewed
         </span>
         <h1 className="header__title">
           <span className="t1">{titleParts.lineOne}</span>

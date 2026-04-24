@@ -8,7 +8,7 @@ export function isProfileIncomplete(profile) {
     return true;
   }
 
-  return PREFERENCE_FIELDS.some((field) => !String(profile[field] || '').trim());
+  return PREFERENCE_FIELDS.every((field) => !String(profile[field] || '').trim());
 }
 
 export async function getUserProfile(userId) {
@@ -19,7 +19,7 @@ export async function getUserProfile(userId) {
   const supabase = await createSupabaseAuthServerClient();
   const { data, error } = await supabase
     .from('user_profiles')
-    .select('user_id, email, skin_type, skin_condition, age, skin_tone, created_at, updated_at')
+    .select('user_id, email, full_name, skin_type, skin_condition, age, skin_tone, created_at, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
