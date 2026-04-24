@@ -1687,6 +1687,10 @@ function buildStaticSitemapEntries() {
       lastModified: now
     },
     {
+      url: `${SITE_URL}/privacy`,
+      lastModified: now
+    },
+    {
       url: `${SITE_URL}/sunscreens`,
       lastModified: now
     }

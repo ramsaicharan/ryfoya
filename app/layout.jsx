@@ -2,6 +2,7 @@ import Script from 'next/script';
 import BrandHeader from '../src/components/BrandHeader';
 import Footer from '../src/components/Footer';
 import { fetchAllPersonas, getDefaultMetadata } from '../src/lib/site-data';
+import { getSupabaseConfig } from '../src/lib/supabaseConfig';
 import '../src/styles.css';
 
 export const metadata = getDefaultMetadata();
@@ -22,6 +23,7 @@ export default async function RootLayout({ children }) {
       }))
     )
     .catch(() => []);
+  const supabaseConfig = getSupabaseConfig();
 
   return (
     <html lang="en">
@@ -40,7 +42,7 @@ export default async function RootLayout({ children }) {
         </Script>
       </head>
       <body>
-        <BrandHeader />
+        <BrandHeader supabaseConfig={supabaseConfig} />
         {children}
         <Footer pages={pages} />
       </body>

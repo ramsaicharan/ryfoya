@@ -79,6 +79,11 @@ function Footer({ pages }) {
                 Legal & Disclaimer
               </Link>
             </li>
+            <li>
+              <Link className="site-footer__link" href="/privacy">
+                Privacy Policy
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
