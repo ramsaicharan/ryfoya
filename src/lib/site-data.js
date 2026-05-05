@@ -19,8 +19,40 @@ const PERSONAS_REVALIDATE = 3600;
 const LISTINGS_REVALIDATE = 900;
 const PRODUCT_REVALIDATE = 1800;
 const DEFAULT_PRODUCTS_PER_PAGE = 24;
+const SUPABASE_BATCH_SIZE = 1000;
 const SITEMAP_CHUNK_SIZE = 10000;
 const SITEMAP_FAMILIES = ['static', 'products', 'skin-context', 'brands', 'formats', 'filters', 'combinations'];
+
+async function fetchAllSupabaseRows(supabase, table, select, options = {}) {
+  const rows = [];
+  const orderBy = Array.isArray(options.orderBy) ? options.orderBy : [];
+
+  for (let from = 0; ; from += SUPABASE_BATCH_SIZE) {
+    const to = from + SUPABASE_BATCH_SIZE - 1;
+    let query = supabase.from(table).select(select);
+
+    for (const order of orderBy) {
+      if (order?.column) {
+        query = query.order(order.column, { ascending: order.ascending !== false });
+      }
+    }
+
+    const { data, error } = await query.range(from, to);
+
+    if (error) {
+      throw new Error(`Could not load ${table}: ${error.message}`);
+    }
+
+    const batch = data || [];
+    rows.push(...batch);
+
+    if (batch.length < SUPABASE_BATCH_SIZE) {
+      break;
+    }
+  }
+
+  return rows;
+}
 
 function buildPersonaPath(routeSlug, pageSlug = '') {
   const safeRouteSlug = String(routeSlug || '').trim();
@@ -94,6 +126,68 @@ function buildListingPath({
   }
 
   return '/sunscreens';
+}
+
+function buildCanonicalCombinationPaths({
+  skinContextRouteSlug = '',
+  brandSlug = '',
+  productFormatSlug = '',
+  filterTypeSlug = ''
+}) {
+  const skinContext = String(skinContextRouteSlug || '').trim();
+  const brand = String(brandSlug || '').trim();
+  const productFormat = String(productFormatSlug || '').trim();
+  const filterType = String(filterTypeSlug || '').trim();
+  const paths = [];
+  const seen = new Set();
+
+  function addPath(criteria) {
+    const path = buildListingPath({
+      skinContextRouteSlug: skinContext,
+      ...criteria
+    });
+
+    if (path && !seen.has(path)) {
+      seen.add(path);
+      paths.push(path);
+    }
+  }
+
+  if (skinContext) {
+    if (brand) {
+      addPath({ brandSlug: brand });
+    }
+
+    if (productFormat) {
+      addPath({ productFormatSlug: productFormat });
+    }
+
+    if (filterType) {
+      addPath({ filterTypeSlug: filterType });
+    }
+  }
+
+  if (brand && productFormat) {
+    addPath({ brandSlug: brand, productFormatSlug: productFormat });
+  }
+
+  if (filterType && brand) {
+    addPath({ filterTypeSlug: filterType, brandSlug: brand });
+  }
+
+  if (filterType && productFormat) {
+    addPath({ filterTypeSlug: filterType, productFormatSlug: productFormat });
+  }
+
+  if (filterType && brand && productFormat) {
+    addPath({
+      filterTypeSlug: filterType,
+      brandSlug: brand,
+      productFormatSlug: productFormat
+    });
+  }
+
+  return paths;
 }
 
 function formatLookupLabel(value, fallback = '') {
@@ -519,16 +613,12 @@ export function normalizeOverallProduct(product) {
 const fetchAllPersonasCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('target_personas')
-      .select('id, page_slug, route_slug, page_title, created_at, skin_type, skin_condition, age, skin_tone')
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      throw new Error(`Could not load personas: ${error.message}`);
-    }
-
-    return data || [];
+    return fetchAllSupabaseRows(
+      supabase,
+      'target_personas',
+      'id, page_slug, route_slug, page_title, created_at, skin_type, skin_condition, age, skin_tone',
+      { orderBy: [{ column: 'created_at', ascending: true }, { column: 'id', ascending: true }] }
+    );
   },
   ['all-personas'],
   { revalidate: PERSONAS_REVALIDATE, tags: ['personas'] }
@@ -553,15 +643,12 @@ function normalizeLookupRow(row) {
 const fetchProductLookupFallbackRowsCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('products')
-      .select('brand_name, product_format, filter_type');
-
-    if (error) {
-      throw new Error(`Could not load product lookup fallback rows: ${error.message}`);
-    }
-
-    const rows = data || [];
+    const rows = await fetchAllSupabaseRows(
+      supabase,
+      'products',
+      'id, brand_name, product_format, filter_type, created_at',
+      { orderBy: [{ column: 'created_at', ascending: true }, { column: 'id', ascending: true }] }
+    );
 
     return {
       brands: buildFallbackLookupRows(rows.map((row) => row.brand_name)),
@@ -576,16 +663,14 @@ const fetchProductLookupFallbackRowsCached = unstable_cache(
 const fetchAllBrandsCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('brands')
-      .select('id, slug, label, source_value, meta_title, meta_description, created_at')
-      .order('label', { ascending: true });
+    const rows = await fetchAllSupabaseRows(
+      supabase,
+      'brands',
+      'id, slug, label, source_value, meta_title, meta_description, created_at',
+      { orderBy: [{ column: 'label', ascending: true }, { column: 'id', ascending: true }] }
+    );
 
-    if (error) {
-      throw new Error(`Could not load brands: ${error.message}`);
-    }
-
-    return (data || []).map(normalizeLookupRow);
+    return rows.map(normalizeLookupRow);
   },
   ['all-brands'],
   { revalidate: PERSONAS_REVALIDATE, tags: ['brands'] }
@@ -604,16 +689,14 @@ export async function fetchAllBrands() {
 const fetchAllProductFormatsCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('product_formats')
-      .select('id, slug, label, source_value, meta_title, meta_description, created_at')
-      .order('label', { ascending: true });
+    const rows = await fetchAllSupabaseRows(
+      supabase,
+      'product_formats',
+      'id, slug, label, source_value, meta_title, meta_description, created_at',
+      { orderBy: [{ column: 'label', ascending: true }, { column: 'id', ascending: true }] }
+    );
 
-    if (error) {
-      throw new Error(`Could not load product formats: ${error.message}`);
-    }
-
-    return (data || []).map(normalizeLookupRow);
+    return rows.map(normalizeLookupRow);
   },
   ['all-product-formats'],
   { revalidate: PERSONAS_REVALIDATE, tags: ['product-formats'] }
@@ -632,16 +715,14 @@ export async function fetchAllProductFormats() {
 const fetchAllFilterTypesCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('filter_types')
-      .select('id, slug, label, source_value, meta_title, meta_description, created_at')
-      .order('label', { ascending: true });
+    const rows = await fetchAllSupabaseRows(
+      supabase,
+      'filter_types',
+      'id, slug, label, source_value, meta_title, meta_description, created_at',
+      { orderBy: [{ column: 'label', ascending: true }, { column: 'id', ascending: true }] }
+    );
 
-    if (error) {
-      throw new Error(`Could not load filter types: ${error.message}`);
-    }
-
-    return (data || []).map(normalizeLookupRow);
+    return rows.map(normalizeLookupRow);
   },
   ['all-filter-types'],
   { revalidate: PERSONAS_REVALIDATE, tags: ['filter-types'] }
@@ -1499,17 +1580,14 @@ export async function fetchProductDetailPageData(productSlug, contextRouteSlug =
 const fetchAllProductRoutesCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('products')
-      .select('slug, created_at')
-      .not('slug', 'is', null)
-      .order('created_at', { ascending: true });
+    const rows = await fetchAllSupabaseRows(
+      supabase,
+      'products',
+      'id, slug, created_at',
+      { orderBy: [{ column: 'created_at', ascending: true }, { column: 'id', ascending: true }] }
+    );
 
-    if (error) {
-      throw new Error(`Could not load product routes: ${error.message}`);
-    }
-
-    return data || [];
+    return rows.filter((row) => row.slug);
   },
   ['all-product-routes'],
   { revalidate: PERSONAS_REVALIDATE, tags: ['products'] }
@@ -1528,22 +1606,20 @@ const fetchListingRouteEntriesCached = unstable_cache(
       fetchAllFilterTypes()
     ]);
     const supabase = getSupabaseServerClient();
-    const [{ data: products, error: productsError }, { data: skinScores, error: skinScoresError }] = await Promise.all([
-      supabase
-        .from('products')
-        .select('id, brand_id, product_format_id, filter_type_id, overall_score, created_at'),
-      supabase
-        .from('product_skin_scores')
-        .select('persona_id, product_id')
+    const [products, skinScores] = await Promise.all([
+      fetchAllSupabaseRows(
+        supabase,
+        'products',
+        'id, brand_id, product_format_id, filter_type_id, overall_score, created_at',
+        { orderBy: [{ column: 'created_at', ascending: true }, { column: 'id', ascending: true }] }
+      ),
+      fetchAllSupabaseRows(
+        supabase,
+        'product_skin_scores',
+        'id, persona_id, product_id',
+        { orderBy: [{ column: 'id', ascending: true }] }
+      )
     ]);
-
-    if (productsError) {
-      throw new Error(`Could not load listing products for sitemap: ${productsError.message}`);
-    }
-
-    if (skinScoresError) {
-      throw new Error(`Could not load persona listing combinations for sitemap: ${skinScoresError.message}`);
-    }
 
     const brandMap = new Map(brands.map((row) => [row.id, row]));
     const productFormatMap = new Map(productFormats.map((row) => [row.id, row]));
@@ -1577,9 +1653,25 @@ const fetchListingRouteEntriesCached = unstable_cache(
       if (product.filter_type_id && filterTypeMap.has(product.filter_type_id)) {
         addEntry(buildListingPath({ filterTypeSlug: filterTypeMap.get(product.filter_type_id).slug }), product.created_at);
       }
+
+      const brandSlug = product.brand_id && brandMap.has(product.brand_id) ? brandMap.get(product.brand_id).slug : '';
+      const formatSlug =
+        product.product_format_id && productFormatMap.has(product.product_format_id)
+          ? productFormatMap.get(product.product_format_id).slug
+          : '';
+      const filterSlug =
+        product.filter_type_id && filterTypeMap.has(product.filter_type_id) ? filterTypeMap.get(product.filter_type_id).slug : '';
+
+      for (const path of buildCanonicalCombinationPaths({
+        brandSlug,
+        productFormatSlug: formatSlug,
+        filterTypeSlug: filterSlug
+      })) {
+        addEntry(path, product.created_at);
+      }
     }
 
-    for (const row of skinScores || []) {
+    for (const row of skinScores) {
       const persona = personaMap.get(row.persona_id);
       const product = productMap.get(row.product_id);
 
@@ -1590,63 +1682,21 @@ const fetchListingRouteEntriesCached = unstable_cache(
       personaIdsWithProducts.add(persona.id);
       addEntry(buildListingPath({ skinContextRouteSlug: persona.route_slug, persona }), persona.created_at);
 
-      if (product.brand_id && brandMap.has(product.brand_id)) {
-        addEntry(
-          buildListingPath({
-            skinContextRouteSlug: persona.route_slug,
-            brandSlug: brandMap.get(product.brand_id).slug,
-            persona
-          }),
-          persona.created_at
-        );
-      }
+      const brandSlug = product.brand_id && brandMap.has(product.brand_id) ? brandMap.get(product.brand_id).slug : '';
+      const formatSlug =
+        product.product_format_id && productFormatMap.has(product.product_format_id)
+          ? productFormatMap.get(product.product_format_id).slug
+          : '';
+      const filterSlug =
+        product.filter_type_id && filterTypeMap.has(product.filter_type_id) ? filterTypeMap.get(product.filter_type_id).slug : '';
 
-      if (product.product_format_id && productFormatMap.has(product.product_format_id)) {
-        const formatSlug = productFormatMap.get(product.product_format_id).slug;
-        addEntry(
-          buildListingPath({
-            productFormatSlug: formatSlug,
-            skinContextRouteSlug: persona.route_slug,
-            persona
-          }),
-          persona.created_at
-        );
-
-        if (product.brand_id && brandMap.has(product.brand_id)) {
-          addEntry(
-            buildListingPath({
-              productFormatSlug: formatSlug,
-              skinContextRouteSlug: persona.route_slug,
-              brandSlug: brandMap.get(product.brand_id).slug,
-              persona
-            }),
-            persona.created_at
-          );
-        }
-      }
-
-      if (product.filter_type_id && filterTypeMap.has(product.filter_type_id)) {
-        const filterSlug = filterTypeMap.get(product.filter_type_id).slug;
-        addEntry(
-          buildListingPath({
-            filterTypeSlug: filterSlug,
-            skinContextRouteSlug: persona.route_slug,
-            persona
-          }),
-          persona.created_at
-        );
-
-        if (product.brand_id && brandMap.has(product.brand_id)) {
-          addEntry(
-            buildListingPath({
-              filterTypeSlug: filterSlug,
-              skinContextRouteSlug: persona.route_slug,
-              brandSlug: brandMap.get(product.brand_id).slug,
-              persona
-            }),
-            persona.created_at
-          );
-        }
+      for (const path of buildCanonicalCombinationPaths({
+        skinContextRouteSlug: persona.route_slug,
+        brandSlug,
+        productFormatSlug: formatSlug,
+        filterTypeSlug: filterSlug
+      })) {
+        addEntry(path, persona.created_at);
       }
     }
 
@@ -1731,31 +1781,27 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
       fetchAllFilterTypes()
     ]);
     const supabase = getSupabaseServerClient();
-    const [{ data: products, error: productsError }, { data: skinScores, error: skinScoresError }] = await Promise.all([
-      supabase
-        .from('products')
-        .select(
-          'id, slug, created_at, brand_id, brand_name, product_format_id, product_format, filter_type_id, filter_type, overall_score'
-        ),
-      supabase
-        .from('product_skin_scores')
-        .select('persona_id, product_id')
+    const [products, skinScores] = await Promise.all([
+      fetchAllSupabaseRows(
+        supabase,
+        'products',
+        'id, slug, created_at, brand_id, brand_name, product_format_id, product_format, filter_type_id, filter_type, overall_score',
+        { orderBy: [{ column: 'created_at', ascending: true }, { column: 'id', ascending: true }] }
+      ),
+      fetchAllSupabaseRows(
+        supabase,
+        'product_skin_scores',
+        'id, persona_id, product_id',
+        { orderBy: [{ column: 'id', ascending: true }] }
+      )
     ]);
-
-    if (productsError) {
-      throw new Error(`Could not load sitemap products: ${productsError.message}`);
-    }
-
-    if (skinScoresError) {
-      throw new Error(`Could not load sitemap skin scores: ${skinScoresError.message}`);
-    }
 
     const entriesByFamily = createEmptySitemapFamilies();
     entriesByFamily.static = families.static;
     const seen = new Set();
     const personaIdsWithProducts = new Set();
-    const productRows = products || [];
-    const skinScoreRows = skinScores || [];
+    const productRows = products;
+    const skinScoreRows = skinScores;
     const personaMap = new Map(personas.map((row) => [row.id, row]));
     const brandMap = new Map(
       brands
@@ -1852,6 +1898,14 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
       if (filterTypeSlug) {
         addEntry('filters', buildListingPath({ filterTypeSlug }), product.created_at);
       }
+
+      for (const path of buildCanonicalCombinationPaths({
+        brandSlug,
+        productFormatSlug,
+        filterTypeSlug
+      })) {
+        addEntry('combinations', path, product.created_at);
+      }
     }
 
     for (const row of skinScoreRows) {
@@ -1869,66 +1923,17 @@ const fetchSitemapEntriesByFamilyCached = unstable_cache(
       personaIdsWithProducts.add(persona.id);
       addEntry('skin-context', buildListingPath({ skinContextRouteSlug: persona.route_slug, persona }), persona.created_at);
 
-      if (brandSlug) {
+      for (const path of buildCanonicalCombinationPaths({
+        skinContextRouteSlug: persona.route_slug,
+        brandSlug,
+        productFormatSlug,
+        filterTypeSlug
+      })) {
         addEntry(
           'combinations',
-          buildListingPath({
-            skinContextRouteSlug: persona.route_slug,
-            brandSlug,
-            persona
-          }),
+          path,
           persona.created_at
         );
-      }
-
-      if (productFormatSlug) {
-        addEntry(
-          'combinations',
-          buildListingPath({
-            productFormatSlug,
-            skinContextRouteSlug: persona.route_slug,
-            persona
-          }),
-          persona.created_at
-        );
-
-        if (brandSlug) {
-          addEntry(
-            'combinations',
-            buildListingPath({
-              productFormatSlug,
-              skinContextRouteSlug: persona.route_slug,
-              brandSlug,
-              persona
-            }),
-            persona.created_at
-          );
-        }
-      }
-
-      if (filterTypeSlug) {
-        addEntry(
-          'combinations',
-          buildListingPath({
-            filterTypeSlug,
-            skinContextRouteSlug: persona.route_slug,
-            persona
-          }),
-          persona.created_at
-        );
-
-        if (brandSlug) {
-          addEntry(
-            'combinations',
-            buildListingPath({
-              filterTypeSlug,
-              skinContextRouteSlug: persona.route_slug,
-              brandSlug,
-              persona
-            }),
-            persona.created_at
-          );
-        }
       }
     }
 
