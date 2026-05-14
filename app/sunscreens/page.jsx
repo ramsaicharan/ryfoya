@@ -10,7 +10,7 @@ import {
   getSunscreensMetadata
 } from '../../src/lib/site-data';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 900;
 
 export const metadata = getSunscreensMetadata();
 

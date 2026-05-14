@@ -16,7 +16,12 @@ import {
   getListingMetadata
 } from '../../../../src/lib/site-data';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 900;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 function parsePageParam(value) {
   const page = Number.parseInt(String(value || '1'), 10);

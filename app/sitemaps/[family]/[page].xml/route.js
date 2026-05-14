@@ -1,7 +1,17 @@
 import { notFound } from 'next/navigation';
-import { fetchSitemapShard } from '../../../../src/lib/site-data';
+import { fetchSitemapShard, fetchSitemapShards } from '../../../../src/lib/site-data';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const shards = await fetchSitemapShards().catch(() => []);
+
+  return shards.map((shard) => ({
+    family: shard.family,
+    page: `${shard.page}`
+  }));
+}
 
 function escapeXml(value) {
   return String(value || '')
@@ -45,7 +55,7 @@ export async function GET(_request, { params }) {
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'no-store'
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
     }
   });
 }
