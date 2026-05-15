@@ -1,6 +1,6 @@
 import { fetchSitemapIndexEntries } from '../../src/lib/site-data';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 function escapeXml(value) {
   return String(value || '')
@@ -38,7 +38,7 @@ export async function GET() {
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+      'Cache-Control': 'no-store'
     }
   });
 }

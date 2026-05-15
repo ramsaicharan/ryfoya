@@ -12,19 +12,9 @@ import {
 } from 'lucide-react';
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
-import { fetchAllProductRoutes, fetchProductBySlug, fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
+import { fetchProductBySlug, fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
 
-export const revalidate = 1800;
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  const routes = await fetchAllProductRoutes().catch(() => []);
-
-  return routes
-    .map((route) => String(route.slug || '').trim())
-    .filter(Boolean)
-    .map((slug) => ({ slug }));
-}
+export const dynamic = 'force-dynamic';
 
 function extractNumber(value) {
   const match = String(value || '').match(/(\d+(?:\.\d+)?)/);

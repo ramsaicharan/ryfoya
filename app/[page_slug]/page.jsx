@@ -1,17 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation';
-import { fetchAllPersonas, fetchPersonaBySlug, getPersonaMetadata } from '../../src/lib/site-data';
+import { fetchPersonaBySlug, getPersonaMetadata } from '../../src/lib/site-data';
 
-export const revalidate = 3600;
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  const personas = await fetchAllPersonas().catch(() => []);
-
-  return personas
-    .map((persona) => String(persona.page_slug || '').trim())
-    .filter(Boolean)
-    .map((page_slug) => ({ page_slug }));
-}
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
   const { page_slug } = await params;

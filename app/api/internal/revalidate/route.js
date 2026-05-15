@@ -2,17 +2,6 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
-const SITEMAP_REVALIDATION_PATHS = [
-  '/sitemap.xml',
-  '/sitemaps/static/1.xml',
-  '/sitemaps/products/1.xml',
-  '/sitemaps/skin-context/1.xml',
-  '/sitemaps/brands/1.xml',
-  '/sitemaps/formats/1.xml',
-  '/sitemaps/filters/1.xml',
-  '/sitemaps/combinations/1.xml'
-];
-
 const REVALIDATION_SCOPES = {
   all: {
     tags: [
@@ -28,7 +17,7 @@ const REVALIDATION_SCOPES = {
       'product-ingredients',
       'product-evaluations'
     ],
-    paths: ['/', '/sunscreens', ...SITEMAP_REVALIDATION_PATHS]
+    paths: ['/', '/sunscreens', '/sitemap.xml']
   },
   listings: {
     tags: [
@@ -42,23 +31,23 @@ const REVALIDATION_SCOPES = {
       'persona-pages',
       'overall-sunscreens'
     ],
-    paths: ['/sunscreens', ...SITEMAP_REVALIDATION_PATHS]
+    paths: ['/sunscreens', '/sitemap.xml']
   },
   sitemap: {
     tags: ['personas', 'brands', 'product-formats', 'filter-types', 'products', 'product-skin-scores'],
-    paths: SITEMAP_REVALIDATION_PATHS
+    paths: ['/sitemap.xml']
   },
   products: {
     tags: ['products', 'overall-sunscreens', 'product-ingredients', 'product-evaluations', 'product-skin-scores'],
-    paths: ['/sunscreens', ...SITEMAP_REVALIDATION_PATHS]
+    paths: ['/sunscreens', '/sitemap.xml']
   },
   personas: {
     tags: ['personas', 'persona-products', 'persona-pages', 'product-skin-scores'],
-    paths: ['/sunscreens', ...SITEMAP_REVALIDATION_PATHS]
+    paths: ['/sunscreens', '/sitemap.xml']
   },
   lookups: {
     tags: ['brands', 'product-formats', 'filter-types', 'products', 'overall-sunscreens', 'persona-pages'],
-    paths: ['/sunscreens', ...SITEMAP_REVALIDATION_PATHS]
+    paths: ['/sunscreens', '/sitemap.xml']
   }
 };
 
