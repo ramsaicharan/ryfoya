@@ -154,6 +154,37 @@ Start production locally:
 npm run start
 ```
 
+## Static Sitemap Refresh
+
+Production sitemap files are committed static XML files:
+
+- `public/sitemap.xml`
+- `public/sitemaps/**`
+
+The recommended production refresh path is the manual GitHub Action named `Generate static sitemaps`. It checks out `main`, runs the sitemap generator, commits changed sitemap XML files to `main`, pushes to GitHub, and lets Vercel deploy the updated static files.
+
+Run it from the GitHub UI:
+
+```text
+Actions -> Generate static sitemaps -> Run workflow -> main
+```
+
+Or trigger it with GitHub CLI:
+
+```bash
+gh workflow run generate-sitemaps.yml --ref main
+```
+
+This command does not require switching your local branch. You can stay on `codex/develop`; the GitHub Action runs separately and pushes the sitemap commit to `main`.
+
+For local preview/debug only:
+
+```bash
+npm run sitemap:generate
+```
+
+This only writes sitemap XML files on your current local branch. It does not commit, push, or update production.
+
 ## Route Architecture
 
 - `/`
@@ -185,8 +216,8 @@ npm run start
   - rendered by [app/legal/page.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/legal/page.jsx)
 
 - `/sitemap.xml`
-  - generated dynamically from Supabase
-  - rendered by [app/sitemap.js](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/sitemap.js)
+  - static sitemap index served from [public/sitemap.xml](/Users/ramcharan/Documents/0toX/sunscreen-analyser/public/sitemap.xml)
+  - child sitemap shards are served from `public/sitemaps/`
 
 ## Layout Structure
 
@@ -364,6 +395,6 @@ Image optimization through `next/image` is intentionally not part of the current
 ## Repo Notes
 
 - `.env` is intentionally ignored
-- the sitemap is DB-driven
+- the sitemap is generated from Supabase by a manual GitHub Action and served as static XML
 - footer skin-context links are intentionally limited
 - the architecture is route-first, with Supabase access centralized in `site-data.js`
