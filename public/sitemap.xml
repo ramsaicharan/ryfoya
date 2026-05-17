@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/static/1.xml</loc>
+    <lastmod>2026-05-17T05:50:58.910Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/products/1.xml</loc>
+    <lastmod>2026-05-05T12:03:30.963Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/skin-context/1.xml</loc>
+    <lastmod>2026-04-03T12:47:21.683Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/brands/1.xml</loc>
+    <lastmod>2026-05-03T04:04:12.879Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/formats/1.xml</loc>
+    <lastmod>2026-04-28T06:08:26.534Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/filters/1.xml</loc>
+    <lastmod>2026-04-02T00:48:34.651Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/combinations/1.xml</loc>
+    <lastmod>2026-05-05T12:03:30.963Z</lastmod>
+  </sitemap>
+</sitemapindex>

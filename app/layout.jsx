@@ -1,4 +1,5 @@
 import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/next';
 import BrandHeader from '../src/components/BrandHeader';
 import Footer from '../src/components/Footer';
 import { fetchAllPersonas, getDefaultMetadata } from '../src/lib/site-data';
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }) {
         <BrandHeader supabaseConfig={supabaseConfig} />
         {children}
         <Footer pages={pages} />
+        <Analytics />
       </body>
     </html>
   );
