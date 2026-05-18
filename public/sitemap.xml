@@ -2,11 +2,11 @@
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/static/1.xml</loc>
-    <lastmod>2026-05-17T11:10:59.515Z</lastmod>
+    <lastmod>2026-05-18T10:57:56.391Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/products/1.xml</loc>
-    <lastmod>2026-05-17T09:50:08.567Z</lastmod>
+    <lastmod>2026-05-18T10:35:10.926Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/skin-context/1.xml</loc>
@@ -26,6 +26,10 @@
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/combinations/1.xml</loc>
-    <lastmod>2026-05-17T09:50:08.567Z</lastmod>
+    <lastmod>2026-05-18T10:35:10.926Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/combinations/2.xml</loc>
+    <lastmod>2026-04-03T12:47:21.683Z</lastmod>
   </sitemap>
 </sitemapindex>
