@@ -282,6 +282,127 @@ function buildTitleContext(persona) {
   return '';
 }
 
+function hashString(value) {
+  return [...String(value || '')].reduce(
+    (hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0,
+    0
+  );
+}
+
+function cleanDescriptionText(value, { lowercase = true } = {}) {
+  const normalized = normalizeLookupValue(value);
+  return lowercase ? normalized.toLowerCase() : normalized;
+}
+
+function buildListingDescriptionSeed({ persona = null, brand = null, productFormat = null, filterType = null }) {
+  return buildListingPath({
+    skinContextRouteSlug: persona?.route_slug || '',
+    brandSlug: brand?.slug || '',
+    productFormatSlug: productFormat?.slug || '',
+    filterTypeSlug: filterType?.slug || '',
+    persona
+  });
+}
+
+function buildSunscreenProductPhrase({
+  brand = null,
+  productFormat = null,
+  filterType = null,
+  includeBrand = true,
+  pluralFormat = true
+}) {
+  const filterLabel = cleanDescriptionText(filterType?.label);
+  const brandLabel = includeBrand ? cleanDescriptionText(brand?.label, { lowercase: false }) : '';
+  const productFormatLabel = cleanDescriptionText(productFormat?.label);
+  const noun = productFormatLabel
+    ? `sunscreen ${productFormatLabel}${pluralFormat ? 's' : ''}`
+    : pluralFormat
+      ? 'sunscreens'
+      : 'sunscreen';
+
+  return [filterLabel, brandLabel, noun]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildStandardAudienceClause(persona) {
+  const age = cleanDescriptionText(persona?.age);
+  const skinCondition = cleanDescriptionText(persona?.skin_condition);
+  const skinType = cleanDescriptionText(persona?.skin_type);
+  const clauses = [];
+
+  if (age) {
+    clauses.push(`for ${age}`);
+  }
+
+  if (skinCondition || skinType) {
+    clauses.push(`with ${[skinCondition, skinType].filter(Boolean).join(' ')} skin`);
+  }
+
+  return clauses.length ? ` ${clauses.join(' ')}` : '';
+}
+
+function buildBenefitAudienceClause(persona) {
+  const age = cleanDescriptionText(persona?.age);
+  const skinCondition = cleanDescriptionText(persona?.skin_condition);
+  const skinType = cleanDescriptionText(persona?.skin_type);
+
+  if (age && skinType && skinCondition) {
+    return ` for ${age} with ${skinType} skin and ${skinCondition} concerns`;
+  }
+
+  if (age && skinType) {
+    return ` for ${age} with ${skinType} skin`;
+  }
+
+  if (age && skinCondition) {
+    return ` for ${age} with ${skinCondition} concerns`;
+  }
+
+  if (age) {
+    return ` for ${age}`;
+  }
+
+  if (skinType && skinCondition) {
+    return ` for ${skinType} skin with ${skinCondition} concerns`;
+  }
+
+  if (skinType) {
+    return ` for ${skinType} skin`;
+  }
+
+  if (skinCondition) {
+    return ` for ${skinCondition} concerns`;
+  }
+
+  return '';
+}
+
+function buildQuestionAudienceClause(persona) {
+  const age = cleanDescriptionText(persona?.age);
+  const skinCondition = cleanDescriptionText(persona?.skin_condition);
+  const skinType = cleanDescriptionText(persona?.skin_type);
+  const skinContext = [skinCondition, skinType].filter(Boolean).join(' ');
+  const clauses = [];
+
+  if (skinContext) {
+    clauses.push(`for ${skinContext} skin`);
+  }
+
+  if (age) {
+    clauses.push(`in your ${age}`);
+  }
+
+  return clauses.length ? ` ${clauses.join(' ')}` : '';
+}
+
+function buildBrandTopPicksSentence(brand) {
+  const brandLabel = cleanDescriptionText(brand?.label, { lowercase: false });
+  return brandLabel ? `Browse ${brandLabel}'s top picks.` : 'Browse top picks.';
+}
+
 function buildListingTitle({ persona = null, brand = null, productFormat = null, filterType = null }) {
   const prefixParts = [filterType?.label, brand?.label].map((value) => String(value || '').trim()).filter(Boolean);
   const sunscreenNoun = productFormat?.label
@@ -297,20 +418,39 @@ function buildListingTitle({ persona = null, brand = null, productFormat = null,
 }
 
 function buildListingDescription({ persona = null, brand = null, productFormat = null, filterType = null }) {
-  const title = buildListingTitle({ persona, brand, productFormat, filterType });
-  const base =
-    String(
-      (!persona && !brand && !productFormat && filterType && filterType.metaDescription) ||
-      (!persona && !brand && productFormat && !filterType && productFormat.metaDescription) ||
-      (!persona && brand && !productFormat && !filterType && brand.metaDescription) ||
-      ''
-    ).trim();
+  const seed = buildListingDescriptionSeed({ persona, brand, productFormat, filterType });
+  const hash = hashString(seed);
+  const hasBrand = Boolean(cleanDescriptionText(brand?.label, { lowercase: false }));
+  const standardProductPhrase =
+    buildSunscreenProductPhrase({ brand, productFormat, filterType }) || 'sunscreens';
+  const benefitProductPhrase =
+    buildSunscreenProductPhrase({ productFormat, filterType, includeBrand: false }) || 'sunscreens';
+  const questionProductPhrase =
+    buildSunscreenProductPhrase({ productFormat, filterType, includeBrand: false, pluralFormat: false }) ||
+    'sunscreen';
+  const closers = [
+    'Compare SPF, ingredients, finish & user reviews.',
+    'Shortlisted by formula, texture & dermatologist ratings.',
+    'Vetted for real results, real skin & honest reviews.',
+    'Compare formulas, finishes & verified user feedback.',
+    'Handpicked by skin compatibility, SPF & ingredient safety.'
+  ];
+  const closer = closers[(hash >>> 3) % closers.length];
+  const standardDescription = () =>
+    `Discover the best ${standardProductPhrase}${buildStandardAudienceClause(persona)}. ${closer}`;
+  const benefitDescription = () =>
+    `Top-rated ${benefitProductPhrase}${buildBenefitAudienceClause(persona)}. ${closer}`;
+  const questionDescription = () =>
+    `Looking for the best ${questionProductPhrase}${buildQuestionAudienceClause(persona)}? ${buildBrandTopPicksSentence(brand)} ${closer}`;
+  const description = hasBrand
+    ? hash % 2 === 0
+      ? standardDescription()
+      : questionDescription()
+    : benefitDescription();
 
-  if (base) {
-    return base;
-  }
-
-  return `${title} ranked on Ryfoya with transparent scoring, ingredient analysis, and formula-level tradeoffs.`;
+  return description
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function seededPrice(seed) {
@@ -1018,9 +1158,7 @@ function isSingleDimensionListing({ persona, brand, productFormat, filterType })
 function buildListingHeader({ persona = null, brand = null, productFormat = null, filterType = null }) {
   return {
     page_title: buildListingTitle({ persona, brand, productFormat, filterType }),
-    page_description:
-      String(persona?.page_description || '').trim() ||
-      buildListingDescription({ persona: null, brand, productFormat, filterType })
+    page_description: buildListingDescription({ persona, brand, productFormat, filterType })
   };
 }
 
@@ -2223,7 +2361,7 @@ export function getDefaultMetadata() {
 
 export function getPersonaMetadata(persona) {
   const title = persona?.page_title || SITE_NAME;
-  const description = persona?.meta_description || persona?.page_description || DEFAULT_DESCRIPTION;
+  const description = buildListingDescription({ persona }) || DEFAULT_DESCRIPTION;
   const pathname = buildPersonaPath(persona?.route_slug, persona?.page_slug);
 
   return {
@@ -2249,11 +2387,7 @@ export function getPersonaMetadata(persona) {
 
 export function getListingMetadata({ persona = null, brand = null, productFormat = null, filterType = null }) {
   const title = buildListingTitle({ persona, brand, productFormat, filterType }) || SITE_NAME;
-  const description =
-    String(persona?.meta_description || '').trim() ||
-    String(persona?.page_description || '').trim() ||
-    buildListingDescription({ persona: null, brand, productFormat, filterType }) ||
-    DEFAULT_DESCRIPTION;
+  const description = buildListingDescription({ persona, brand, productFormat, filterType }) || DEFAULT_DESCRIPTION;
   const pathname = buildListingPath({
     skinContextRouteSlug: persona?.route_slug || '',
     brandSlug: brand?.slug || '',
@@ -2283,10 +2417,13 @@ export function getListingMetadata({ persona = null, brand = null, productFormat
   };
 }
 
+export function getSunscreensDescription() {
+  return buildListingDescription({});
+}
+
 export function getSunscreensMetadata() {
   const title = 'Best Sunscreens';
-  const description =
-    'Browse the highest-ranked sunscreens based on overall score, overall pros, and overall cons.';
+  const description = getSunscreensDescription();
 
   return {
     title,

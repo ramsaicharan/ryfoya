@@ -163,6 +163,22 @@ Production sitemap files are committed static XML files:
 
 The recommended production refresh path is the manual GitHub Action named `Generate static sitemaps`. It checks out `main`, runs the sitemap generator, commits changed sitemap XML files to `main`, pushes to GitHub, and lets Vercel deploy the updated static files.
 
+Before running the action, add Supabase credentials as GitHub repository secrets under:
+
+```text
+GitHub repo -> Settings -> Secrets and variables -> Actions
+```
+
+Required secrets:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+
+The workflow also accepts the existing public-style names if you prefer those:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
 Run it from the GitHub UI:
 
 ```text

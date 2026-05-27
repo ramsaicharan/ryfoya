@@ -7,6 +7,7 @@ import {
   fetchListingFiltersData,
   fetchOverallSunscreens,
   getListingJsonLd,
+  getSunscreensDescription,
   getSunscreensMetadata
 } from '../../src/lib/site-data';
 
@@ -28,8 +29,7 @@ export default async function SunscreensPage({ searchParams }) {
   ]);
   const pagePersona = {
     page_title: 'Best Sunscreens',
-    page_description:
-      'Browse the strongest overall sunscreen picks ranked by overall score, with product-level pros and cons.'
+    page_description: getSunscreensDescription()
   };
   const listingJsonLd = getListingJsonLd({
     title: pagePersona.page_title,
