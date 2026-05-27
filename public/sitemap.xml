@@ -2,11 +2,11 @@
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/static/1.xml</loc>
-    <lastmod>2026-05-17T09:32:18.090Z</lastmod>
+    <lastmod>2026-05-22T17:04:41.767Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/products/1.xml</loc>
-    <lastmod>2026-05-17T08:13:14.659Z</lastmod>
+    <lastmod>2026-05-22T13:39:35.081Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/skin-context/1.xml</loc>
@@ -14,18 +14,22 @@
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/brands/1.xml</loc>
-    <lastmod>2026-05-03T04:04:12.879Z</lastmod>
+    <lastmod>2026-05-22T09:26:01.855Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/formats/1.xml</loc>
-    <lastmod>2026-04-28T06:08:26.534Z</lastmod>
+    <lastmod>2026-05-20T07:31:44.308Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/filters/1.xml</loc>
-    <lastmod>2026-04-02T00:48:34.651Z</lastmod>
+    <lastmod>2026-05-21T03:04:43.923Z</lastmod>
   </sitemap>
   <sitemap>
     <loc>https://ryfoya.com/sitemaps/combinations/1.xml</loc>
-    <lastmod>2026-05-17T08:13:14.659Z</lastmod>
+    <lastmod>2026-05-22T13:39:35.081Z</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://ryfoya.com/sitemaps/combinations/2.xml</loc>
+    <lastmod>2026-04-03T12:47:21.683Z</lastmod>
   </sitemap>
 </sitemapindex>
