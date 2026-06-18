@@ -156,33 +156,47 @@ npm run start
 
 ## Static Sitemap Refresh
 
-Production sitemap files are committed static XML files:
+Production sitemap files are generated during Vercel builds and served as static files:
 
 - `public/sitemap.xml`
 - `public/sitemaps/**`
 
-The recommended production refresh path is the manual GitHub Action named `Generate static sitemaps`. It checks out `main`, runs the sitemap generator, commits changed sitemap XML files to `main`, pushes to GitHub, and lets Vercel deploy the updated static files.
+These generated XML files are intentionally ignored by Git. They should not be committed because they change often and otherwise create noisy `main` conflicts.
 
-Before running the action, add Supabase credentials as GitHub repository secrets under:
+Vercel runs the sitemap generator through the `prebuild` script:
+
+```bash
+node scripts/generate-sitemaps.mjs
+```
+
+The recommended production refresh path is the manual GitHub Action named `Refresh sitemap`. It does not commit sitemap XML. It calls a Vercel deploy hook, Vercel rebuilds the current `main`, and the build writes fresh sitemap files into `public/`.
+
+Before using the action, create a Vercel deploy hook:
+
+```text
+Vercel Project -> Settings -> Git -> Deploy Hooks
+```
+
+Then add the hook URL as a GitHub repository secret:
 
 ```text
 GitHub repo -> Settings -> Secrets and variables -> Actions
 ```
 
-Required secrets:
+Required GitHub secret:
+
+- `VERCEL_DEPLOY_HOOK_URL`
+
+Vercel also needs these environment variables so the build can generate sitemaps:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-
-The workflow also accepts the existing public-style names if you prefer those:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SITE_URL=https://ryfoya.com`
 
 Run it from the GitHub UI:
 
 ```text
-Actions -> Generate static sitemaps -> Run workflow -> main
+Actions -> Refresh sitemap -> Run workflow -> main
 ```
 
 Or trigger it with GitHub CLI:
@@ -191,7 +205,7 @@ Or trigger it with GitHub CLI:
 gh workflow run generate-sitemaps.yml --ref main
 ```
 
-This command does not require switching your local branch. You can stay on `codex/develop`; the GitHub Action runs separately and pushes the sitemap commit to `main`.
+This command does not require switching your local branch. You can stay on `codex/develop`; the GitHub Action runs separately and triggers a Vercel rebuild of `main`.
 
 For local preview/debug only:
 
@@ -199,7 +213,7 @@ For local preview/debug only:
 npm run sitemap:generate
 ```
 
-This only writes sitemap XML files on your current local branch. It does not commit, push, or update production.
+This only writes ignored sitemap XML files on your current local branch. It does not commit, push, or update production.
 
 ## Route Architecture
 
@@ -232,7 +246,7 @@ This only writes sitemap XML files on your current local branch. It does not com
   - rendered by [app/legal/page.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/legal/page.jsx)
 
 - `/sitemap.xml`
-  - static sitemap index served from [public/sitemap.xml](/Users/ramcharan/Documents/0toX/sunscreen-analyser/public/sitemap.xml)
+  - static sitemap index generated during build and served from `public/sitemap.xml`
   - child sitemap shards are served from `public/sitemaps/`
 
 ## Layout Structure
@@ -411,6 +425,6 @@ Image optimization through `next/image` is intentionally not part of the current
 ## Repo Notes
 
 - `.env` is intentionally ignored
-- the sitemap is generated from Supabase by a manual GitHub Action and served as static XML
+- the sitemap is generated from Supabase during Vercel build and served as ignored static XML
 - footer skin-context links are intentionally limited
 - the architecture is route-first, with Supabase access centralized in `site-data.js`

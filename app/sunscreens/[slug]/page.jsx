@@ -12,13 +12,36 @@ import {
 } from 'lucide-react';
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
-import { fetchProductBySlug, fetchProductDetailPageData, getProductMetadata } from '../../../src/lib/site-data';
+import {
+  fetchProductBySlug,
+  fetchProductDetailPageData,
+  formatProductDisplayName,
+  getProductMetadata
+} from '../../../src/lib/site-data';
 
 export const dynamic = 'force-dynamic';
 
 function extractNumber(value) {
   const match = String(value || '').match(/(\d+(?:\.\d+)?)/);
   return match ? Number(match[1]) : 0;
+}
+
+function formatSpfBadge(value) {
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!normalized || /^spf\s*n\/?a$/i.test(normalized) || /^n\/?a$/i.test(normalized)) {
+    return '';
+  }
+
+  return /^spf\b/i.test(normalized) ? normalized.toUpperCase() : `SPF ${normalized}`;
+}
+
+function formatPaBadge(value) {
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!normalized || /^pa\s*n\/?a$/i.test(normalized) || /^n\/?a$/i.test(normalized)) {
+    return '';
+  }
+
+  return /^pa\b/i.test(normalized) ? normalized.toUpperCase() : `PA ${normalized}`;
 }
 
 function getEvaluationMetric(evaluations, agentName, metricKey) {
@@ -299,6 +322,9 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
   const overallScore = Math.max(0, Math.min(100, Math.round(Number(product.overallScore) || 0)));
   const overallScoreStatus = getOverallScoreStatus(overallScore);
   const perfectMatches = buildPerfectMatches(topMatches);
+  const displayProductName = formatProductDisplayName(product.productName);
+  const spfBadge = formatSpfBadge(product.spfRating);
+  const paBadge = formatPaBadge(product.paRating);
 
   return (
     <div className="product-detail-page">
@@ -331,23 +357,21 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
           <div className="detail-content">
             <div className="detail-intro">
               <div className="detail-intro__brand">{product.brandName}</div>
-              <h1 className="detail-intro__title">
-                {product.productName}{' '}
-                <span className="detail-intro__title-accent">{product.spfRating ? `SPF ${product.spfRating}` : ''}</span>
-              </h1>
+              <h1 className="detail-intro__title">{displayProductName} : Ingredients &amp; Skin Analysis.</h1>
+              <div className="detail-badge-row">
+                {/* {topMatches[0]?.contextLabel ? (
+                  <span className="detail-badge detail-badge--lime">{topMatches[0].contextLabel}</span>
+                ) : null} */}
+                {spfBadge ? <span className="detail-badge detail-badge--lime">{spfBadge}</span> : null}
+                {paBadge ? <span className="detail-badge detail-badge--lime">{paBadge}</span> : null}
+                <span className="detail-badge detail-badge--lime">{product.filterType}</span>
+                <span className="detail-badge detail-badge--lime">{product.productFormat}</span>
+              </div>
 
               <p className="detail-intro__desc">
                 {product.overallPros[0] ||
                   'Sunscreen detail page showing product-level scoring, persona matches, and ingredient analysis.'}
               </p>
-
-              <div className="detail-badge-row">
-                {/* {topMatches[0]?.contextLabel ? (
-                  <span className="detail-badge detail-badge--lime">{topMatches[0].contextLabel}</span>
-                ) : null} */}
-                <span className="detail-badge detail-badge--lime">{product.filterType}</span>
-                <span className="detail-badge detail-badge--lime">{product.productFormat}</span>
-              </div>
 
               <div className="detail-overall-score">
                 <div className="detail-overall-score__value">{overallScore}</div>

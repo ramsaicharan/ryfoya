@@ -5,7 +5,7 @@ import { getSupabaseServerClient } from './supabaseServer';
 const SITE_NAME = 'Ryfoya';
 const SITE_URL = 'https://ryfoya.com';
 const DEFAULT_DESCRIPTION = 'Ryfoya helps you browse persona-driven sunscreen recommendation pages.';
-const PRODUCT_DETAIL_TITLE_SUFFIX = 'Skin Compatibility and Ingredients Explained';
+const PRODUCT_DETAIL_TITLE_SUFFIX = 'Ingredients Analysed';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/ryfoya-logo.svg`;
 const SKIN_CONTEXT_PERSONA_IDS = [
   '0f8e5367-e5a4-4dc4-9703-d5a639fe1637',
@@ -488,6 +488,21 @@ function formatProductValue(value, fallback) {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function removeProtectionRatingsFromProductName(value) {
+  return normalizeLookupValue(value)
+    .replace(/\((?:\s*(?:spf\s*\d{1,3}\+?|pa\s*\+{1,4})\s*(?:[,&/+-]\s*)?)+\)/gi, ' ')
+    .replace(/\bspf\s*\d{1,3}\+?(?=\W|$)/gi, ' ')
+    .replace(/\bpa\s*\+{1,4}(?=\W|$)/gi, ' ')
+    .replace(/\s*(?:[|,/+-]\s*)+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function formatProductDisplayName(value) {
+  const normalized = normalizeLookupValue(value);
+  return removeProtectionRatingsFromProductName(normalized) || normalized;
 }
 
 function normalizeAnalysis(analysis) {
@@ -2450,24 +2465,20 @@ export function getSunscreensMetadata() {
 export function getProductMetadata(product) {
   const brandName = product?.brandName || product?.brand_name || '';
   const productName = product?.productName || product?.product_name || '';
+  const displayProductName = formatProductDisplayName(productName);
   const productSlug = product?.productSlug || product?.slug || '';
-  const overallPros = Array.isArray(product?.overallPros)
-    ? product.overallPros
-    : Array.isArray(product?.overall_pros)
-      ? product.overall_pros
-      : [];
   const fullName =
-  brandName && productName
-    ? `${brandName} ${productName}`
-    : productName
-      ? `${productName}`
-      : '';
+    brandName && displayProductName
+      ? `${brandName} ${displayProductName}`
+      : displayProductName
+        ? `${displayProductName}`
+        : '';
   const title = fullName
     ? `${fullName} ${PRODUCT_DETAIL_TITLE_SUFFIX}`
     : `Sunscreen Details ${PRODUCT_DETAIL_TITLE_SUFFIX}`;
-  const description =
-    overallPros[0] ||
-    'Detailed sunscreen breakdown covering formula facts, skin-context matches, and ingredient data.';
+  const description = fullName
+    ? `${fullName} ingredients, explained simply so you can understand the formula before choosing it for your skin.`
+    : 'Sunscreen ingredients, explained simply so you can understand the formula before choosing it for your skin.';
   const pathname = productSlug ? `/sunscreens/${productSlug}` : '/sunscreens';
 
   return {

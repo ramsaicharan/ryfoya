@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/generate-sitemaps.mjs",
     "build": "next build",
     "start": "next start",
     "sitemap:generate": "node scripts/generate-sitemaps.mjs"

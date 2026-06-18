@@ -17,7 +17,7 @@ const REVALIDATION_SCOPES = {
       'product-ingredients',
       'product-evaluations'
     ],
-    paths: ['/', '/sunscreens', '/sitemap.xml']
+    paths: ['/', '/sunscreens']
   },
   listings: {
     tags: [
@@ -31,23 +31,23 @@ const REVALIDATION_SCOPES = {
       'persona-pages',
       'overall-sunscreens'
     ],
-    paths: ['/sunscreens', '/sitemap.xml']
+    paths: ['/sunscreens']
   },
   sitemap: {
-    tags: ['personas', 'brands', 'product-formats', 'filter-types', 'products', 'product-skin-scores'],
-    paths: ['/sitemap.xml']
+    tags: [],
+    paths: []
   },
   products: {
     tags: ['products', 'overall-sunscreens', 'product-ingredients', 'product-evaluations', 'product-skin-scores'],
-    paths: ['/sunscreens', '/sitemap.xml']
+    paths: ['/sunscreens']
   },
   personas: {
     tags: ['personas', 'persona-products', 'persona-pages', 'product-skin-scores'],
-    paths: ['/sunscreens', '/sitemap.xml']
+    paths: ['/sunscreens']
   },
   lookups: {
     tags: ['brands', 'product-formats', 'filter-types', 'products', 'overall-sunscreens', 'persona-pages'],
-    paths: ['/sunscreens', '/sitemap.xml']
+    paths: ['/sunscreens']
   }
 };
 
