@@ -2688,6 +2688,72 @@ svg {
 
 .card__accordion[open] .acc__body { display: block; }
 
+/* ── Brand listing FAQ ───────────────────── */
+.brand-listing-faq {
+  width: min(800px, 100%);
+  margin: 48px auto 0;
+}
+.brand-listing-faq__title {
+  margin-bottom: 24px;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+}
+.brand-listing-faq__item {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.brand-listing-faq__item + .brand-listing-faq__item {
+  border-top: 0;
+}
+.brand-listing-faq__item > summary {
+  list-style: none;
+}
+.brand-listing-faq__item > summary::-webkit-details-marker {
+  display: none;
+}
+.brand-listing-faq__question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 0;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.brand-listing-faq__question:hover {
+  color: var(--purple-dk);
+}
+.brand-listing-faq__question:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: -4px;
+  border-radius: 4px;
+}
+.brand-listing-faq__chevron {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--grey);
+  transition: transform .2s ease;
+}
+.brand-listing-faq__item[open] .brand-listing-faq__chevron {
+  transform: rotate(180deg);
+}
+.brand-listing-faq__answer {
+  margin: -4px 0 24px;
+  padding: 16px;
+  border-radius: 0 0 10px 10px;
+  background: #efede8;
+  color: var(--muted);
+  font-size: .95rem;
+  line-height: 1.65;
+}
+
 /* Two-column pros/cons list */
 .verdict {
   display: grid;

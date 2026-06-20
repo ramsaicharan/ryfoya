@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Header from '../../../../src/components/Header';
+import BrandListingFaq from '../../../../src/components/BrandListingFaq';
 import JsonLd from '../../../../src/components/JsonLd';
 import Pagination from '../../../../src/components/Pagination';
 import PersonaChoiceSidebar from '../../../../src/components/PersonaChoiceSidebar';
@@ -174,7 +175,7 @@ export default async function ListingRoutePage({ params, searchParams }) {
     notFound();
   }
 
-  const { persona, products, formulasReviewed, totalPages, currentPage: resolvedPage } = pageData;
+  const { persona, products, formulasReviewed, totalPages, currentPage: resolvedPage, faq } = pageData;
   const listingPath = buildListingPath({
     skinContextRouteSlug: criteria.skinContextRouteSlug || '',
     brandSlug: criteria.brandSlug || '',
@@ -227,6 +228,7 @@ export default async function ListingRoutePage({ params, searchParams }) {
                 currentPage={resolvedPage}
                 totalPages={totalPages}
               />
+              <BrandListingFaq faq={faq} />
             </>
           ) : (
             <p style={{ padding: '40px 0' }}>No products matched this page.</p>

@@ -766,6 +766,100 @@ export function normalizeOverallProduct(product) {
   };
 }
 
+function normalizeScorePercent(value) {
+  const rawScore = normalizeScore(value);
+  return Math.max(0, Math.min(100, rawScore <= 10 ? rawScore * 10 : rawScore));
+}
+
+const FAQ_NEGATIVE_LABEL_PATTERN = /\b(?:irritat(?:ing|ed|ion)|sensitiz(?:ing|ed)|drying|heavy|pilling|stinging|burning|white\s*cast|pore[-\s]?clogging|breakout(?:-prone)?)\b/i;
+const FAQ_CONDITIONAL_NEGATIVE_LABEL_PATTERN = /\b(?:greasy|sticky|comedogenic)\b/i;
+const FAQ_NON_ADJECTIVE_LABEL_PATTERN = /\b(?:vitamin(?:\s+[a-z0-9+]+)?|spf\s*\d*\+*|pa\+*|uva|uvb|zinc|titanium|niacinamide|ceramide|hyaluronic(?:\s+acid)?)\b/i;
+
+function normalizeFaqLabel(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[–—_]/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/^(?:non|oil|alcohol|fragrance)\s+/, (prefix) => `${prefix.trim()}-`);
+}
+
+function getFaqHighlights(labels) {
+  return (Array.isArray(labels) ? labels : [])
+    .flatMap((label) => String(label || '').split(/\s*[·•]\s*/))
+    .map((label) => ({ label: String(label || '').trim(), normalized: normalizeFaqLabel(label) }))
+    .filter(({ label, normalized }) => {
+      const isNegatedDescriptor = /^non[-\s]/.test(normalized);
+      return (
+        label &&
+        !FAQ_NEGATIVE_LABEL_PATTERN.test(normalized) &&
+        !(FAQ_CONDITIONAL_NEGATIVE_LABEL_PATTERN.test(normalized) && !isNegatedDescriptor) &&
+        !FAQ_NON_ADJECTIVE_LABEL_PATTERN.test(normalized)
+      );
+    })
+    .map(({ label }) => label);
+}
+
+function formatNaturalLanguageList(values) {
+  const items = values.map((value) => String(value || '').trim()).filter(Boolean);
+
+  if (items.length <= 1) {
+    return items[0] || '';
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+}
+
+function getListingSkinContext(pageTitle) {
+  const match = String(pageTitle || '').match(/\bfor\s+(.+)$/i);
+  return match?.[1]?.trim().toLowerCase() || '';
+}
+
+export function buildBrandListingFaq({ brand, persona, products }) {
+  const brandName = String(brand?.label || '').trim();
+  const skinContext = getListingSkinContext(
+    buildListingTitle({ persona, brand, productFormat: null, filterType: null })
+  );
+  const rankedProducts = (products || [])
+    .map((product) => ({ ...product, scorePercent: normalizeScorePercent(product.score) }))
+    .sort((left, right) => right.scorePercent - left.scorePercent || left.productName.localeCompare(right.productName));
+
+  if (!brandName || !skinContext || rankedProducts.length === 0) {
+    return null;
+  }
+
+  const highestScoringProduct = rankedProducts[0];
+  const topProductName = String(highestScoringProduct.productName || '').trim();
+  const highlights = formatNaturalLanguageList(getFaqHighlights(highestScoringProduct.labels));
+  const qualifyingProducts = rankedProducts.filter((product) => product.scorePercent > 75);
+  const question = `Which ${brandName} sunscreen is best for ${skinContext}?`;
+
+  if (qualifyingProducts.length === 0) {
+    return {
+      question,
+      answer: highlights
+        ? `No ${brandName} sunscreen is best for ${skinContext}, but the highest-scoring option, the ${topProductName}, is ${highlights}, so it might be suitable for ${skinContext}.`
+        : `No ${brandName} sunscreen is best for ${skinContext}, but the highest-scoring option, the ${topProductName}, might be suitable for ${skinContext}.`
+    };
+  }
+
+  const qualifyingProductNames = formatNaturalLanguageList(
+    qualifyingProducts.map((product) => product.productName)
+  );
+  const verb = qualifyingProducts.length === 1 ? 'is' : 'are';
+
+  return {
+    question,
+    answer: highlights
+      ? `${brandName}'s ${qualifyingProductNames} ${verb} best for ${skinContext}. The ${brandName} ${topProductName} is ${highlights}, making it suitable for ${skinContext}.`
+      : `${brandName}'s ${qualifyingProductNames} ${verb} best for ${skinContext}. The ${brandName} ${topProductName} might be suitable for ${skinContext}.`
+  };
+}
+
 const fetchAllPersonasCached = unstable_cache(
   async () => {
     const supabase = getSupabaseServerClient();
@@ -1133,37 +1227,47 @@ async function fetchFilteredProductIds({
   requireOverallScore = false
 }) {
   const supabase = getSupabaseServerClient();
-  let query = supabase.from('products').select('id');
+  const productIds = [];
 
-  if (brandId) {
-    query = query.eq('brand_id', brandId);
-  } else if (brandValue) {
-    query = query.eq('brand_name', brandValue);
+  for (let from = 0; ; from += SUPABASE_BATCH_SIZE) {
+    const to = from + SUPABASE_BATCH_SIZE - 1;
+    let query = supabase.from('products').select('id').range(from, to);
+
+    if (brandId) {
+      query = query.eq('brand_id', brandId);
+    } else if (brandValue) {
+      query = query.eq('brand_name', brandValue);
+    }
+
+    if (productFormatId) {
+      query = query.eq('product_format_id', productFormatId);
+    } else if (productFormatValue) {
+      query = query.eq('product_format', productFormatValue);
+    }
+
+    if (filterTypeId) {
+      query = query.eq('filter_type_id', filterTypeId);
+    } else if (filterTypeValue) {
+      query = query.eq('filter_type', filterTypeValue);
+    }
+
+    if (requireOverallScore) {
+      query = query.not('overall_score', 'is', null);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Could not load filtered product ids: ${error.message}`);
+    }
+
+    const batch = data || [];
+    productIds.push(...batch.map((row) => row.id).filter(Boolean));
+
+    if (batch.length < SUPABASE_BATCH_SIZE) {
+      return productIds;
+    }
   }
-
-  if (productFormatId) {
-    query = query.eq('product_format_id', productFormatId);
-  } else if (productFormatValue) {
-    query = query.eq('product_format', productFormatValue);
-  }
-
-  if (filterTypeId) {
-    query = query.eq('filter_type_id', filterTypeId);
-  } else if (filterTypeValue) {
-    query = query.eq('filter_type', filterTypeValue);
-  }
-
-  if (requireOverallScore) {
-    query = query.not('overall_score', 'is', null);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Could not load filtered product ids: ${error.message}`);
-  }
-
-  return (data || []).map((row) => row.id).filter(Boolean);
 }
 
 function isSingleDimensionListing({ persona, brand, productFormat, filterType }) {
@@ -1393,6 +1497,95 @@ const fetchListingPageDataCached = unstable_cache(
   { revalidate: LISTINGS_REVALIDATE, tags: ['persona-pages', 'overall-sunscreens', 'brands', 'product-formats', 'filter-types'] }
 );
 
+async function fetchAllMatchingPersonaScoreRows({ personaId, productIds, select }) {
+  const supabase = getSupabaseServerClient();
+  const rows = [];
+
+  for (let from = 0; ; from += SUPABASE_BATCH_SIZE) {
+    const to = from + SUPABASE_BATCH_SIZE - 1;
+    const { data, error } = await supabase
+      .from('product_skin_scores')
+      .select(select)
+      .eq('persona_id', personaId)
+      .in('product_id', productIds)
+      .order('score', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(`Could not load FAQ products: ${error.message}`);
+    }
+
+    const batch = data || [];
+    rows.push(...batch);
+
+    if (batch.length < SUPABASE_BATCH_SIZE) {
+      return rows;
+    }
+  }
+}
+
+const fetchBrandListingFaqCached = unstable_cache(
+  async (criteria) => {
+    const safeCriteria = criteria || {};
+    const [persona, brand, productFormat, filterType] = await Promise.all([
+      fetchPersonaByRouteSlug(safeCriteria.skinContextRouteSlug),
+      fetchBrandBySlug(safeCriteria.brandSlug),
+      safeCriteria.productFormatSlug ? fetchProductFormatBySlug(safeCriteria.productFormatSlug) : Promise.resolve(null),
+      safeCriteria.filterTypeSlug ? fetchFilterTypeBySlug(safeCriteria.filterTypeSlug) : Promise.resolve(null)
+    ]);
+
+    if (!persona || !brand) {
+      return null;
+    }
+
+    const productIds = await fetchFilteredProductIds({
+      brandId: brand.id || '',
+      brandValue: normalizeLookupValue(brand.sourceValue || brand.label || ''),
+      productFormatId: productFormat?.id || '',
+      productFormatValue: normalizeLookupValue(productFormat?.sourceValue || productFormat?.label || ''),
+      filterTypeId: filterType?.id || '',
+      filterTypeValue: normalizeLookupValue(filterType?.sourceValue || filterType?.label || ''),
+      requireOverallScore: false
+    });
+
+    if (productIds.length === 0) {
+      return null;
+    }
+
+    const baseSelect = 'id, product_id, persona_id, score, labels, pros, cons';
+    const productFields =
+      'id, slug, product_name, brand_name, product_buy_link, brand_id, product_format_id, filter_type_id, spf_rating, pa_rating, ph_value, filter_type, product_format, image_links';
+    const selectWithNamedFk = `${baseSelect}, product:products!product_skin_scores_product_id_fkey(${productFields})`;
+    const selectWithDefaultRelation = `${baseSelect}, products(${productFields})`;
+
+    let rows;
+    try {
+      rows = await fetchAllMatchingPersonaScoreRows({
+        personaId: persona.id,
+        productIds,
+        select: selectWithNamedFk
+      });
+    } catch {
+      rows = await fetchAllMatchingPersonaScoreRows({
+        personaId: persona.id,
+        productIds,
+        select: selectWithDefaultRelation
+      });
+    }
+
+    const products = rows
+      .map((row) => ({ ...normalizeRow(row, persona), labels: toList(row.labels, []) }))
+      .sort((left, right) => right.score - left.score);
+
+    return buildBrandListingFaq({ brand, persona, products });
+  },
+  ['brand-listing-faq'],
+  {
+    revalidate: LISTINGS_REVALIDATE,
+    tags: ['persona-pages', 'brands', 'product-formats', 'filter-types', 'products', 'product-skin-scores']
+  }
+);
+
 export async function fetchListingPageData(criteria, requestedPage = 1, requestedPageSize = DEFAULT_PRODUCTS_PER_PAGE) {
   const safeCriteria = {
     skinContextRouteSlug: String(criteria?.skinContextRouteSlug || '').trim(),
@@ -1401,11 +1594,18 @@ export async function fetchListingPageData(criteria, requestedPage = 1, requeste
     filterTypeSlug: String(criteria?.filterTypeSlug || '').trim()
   };
 
-  return fetchListingPageDataCached(
-    safeCriteria,
-    normalizePageNumber(requestedPage),
-    normalizePageSize(requestedPageSize)
-  );
+  const [pageData, faq] = await Promise.all([
+    fetchListingPageDataCached(
+      safeCriteria,
+      normalizePageNumber(requestedPage),
+      normalizePageSize(requestedPageSize)
+    ),
+    safeCriteria.brandSlug && safeCriteria.skinContextRouteSlug
+      ? fetchBrandListingFaqCached(safeCriteria)
+      : Promise.resolve(null)
+  ]);
+
+  return pageData ? { ...pageData, faq } : null;
 }
 
 const fetchOverallSunscreensCached = unstable_cache(
