@@ -3476,6 +3476,12 @@ svg {
   color: #7c5bff;
 }
 
+.detail-intro__brand--link:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
 .detail-intro__title {
   font-family: var(--serif);
   font-size: clamp(2.2rem, 4vw, 3.2rem);
@@ -4766,5 +4772,575 @@ details.ingredient-row:hover .ingredient-row__name {
 
   .skin-tab__panel-top {
     align-items: flex-start;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   SYSTEM DARK THEME
+───────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --purple: #b7a5ff;
+    --purple-lt: #30294a;
+    --purple-dk: #d7ceff;
+    --lime: #d7f65c;
+    --lime-lt: #354519;
+    --ink: #f5f4ed;
+    --sand: #22261f;
+    --surface: #121510;
+    --grey: #aaa9a1;
+    --muted: #c3c1b7;
+    --border: #393e35;
+    --green: #63d99b;
+    --green-lt: #173c2b;
+    --green-txt: #b8f3d0;
+    --amber: #ffc08a;
+    --amber-lt: #482b1c;
+  }
+
+  body {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .site-nav {
+    background: rgba(18, 21, 16, 0.86);
+    border-color: rgba(57, 62, 53, 0.9);
+  }
+
+  .site-nav__drawer,
+  .site-header,
+  .filter-chip,
+  .pagination__link,
+  .card,
+  .brand-listing-faq__answer,
+  .home-card,
+  .about-section--white,
+  .about-principles,
+  .how-codecard,
+  .how-badges,
+  .how-match-card,
+  .how-doctor-card,
+  .how-agent-card,
+  .legal-card,
+  .auth-card,
+  .profile-card,
+  .auth-field input,
+  .profile-field__control,
+  .auth-password-wrap,
+  .persona-filters__sticky,
+  .persona-option,
+  .persona-sheet,
+  .detail-art,
+  .detail-hero__content,
+  .detail-panel,
+  .detail-fact,
+  .detail-match,
+  .detail-empty {
+    background: #1a1e18;
+    color: var(--ink);
+    border-color: var(--border);
+  }
+
+  .site-nav__toggle,
+  .persona-sheet__close,
+  .auth-google,
+  .filter-chip--lime,
+  .banner__match,
+  .detail-pill--lime,
+  .detail-badge--lime {
+    background: var(--lime);
+    color: #111410;
+  }
+
+  .site-nav__toggle-line,
+  .site-nav__link,
+  .site-nav__link--muted,
+  .header__eyebrow,
+  .header__desc,
+  .pagination__status,
+  .card__brand,
+  .specs-text,
+  .verdict__head,
+  .profile-card__meta,
+  .auth-field__hint,
+  .about-hero__desc,
+  .about-section__text,
+  .how-hero__desc,
+  .how-step__desc,
+  .legal-hero__desc,
+  .legal-card__body {
+    color: var(--muted);
+  }
+
+  .site-nav__auth-link,
+  .site-nav__button-link,
+  .btn--primary,
+  .auth-submit,
+  .profile-submit,
+  .about-cta__button,
+  .detail-buy-link {
+    color: #111410;
+  }
+
+  .home-hero,
+  .about-hero,
+  .how-hero,
+  .legal-hero,
+  .auth-page,
+  .profile-page {
+    background:
+      radial-gradient(circle at top right, rgba(183, 165, 255, 0.16), transparent 28%),
+      radial-gradient(circle at left center, rgba(215, 246, 92, 0.11), transparent 24%),
+      var(--surface);
+  }
+
+  .home-card,
+  .about-principles,
+  .how-agent-card,
+  .legal-card,
+  .auth-card,
+  .profile-card,
+  .card,
+  .detail-panel,
+  .detail-fact,
+  .detail-match {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+  }
+
+  .category-card--light,
+  .how-step__visual-bg,
+  .how-match-card,
+  .detail-art__canvas {
+    background: #20251e;
+  }
+
+  .home-hero__eyebrow,
+  .about-pill,
+  .auth-hero__eyebrow,
+  .profile-heading__eyebrow {
+    background: #252c23;
+    border-color: #4b5445;
+    color: #e0e5d8;
+  }
+
+  .category-card--dark {
+    background: #20251e;
+    border-color: #3d4638;
+    color: var(--ink);
+  }
+
+  .category-card--light {
+    background: #2a3027;
+    border-color: #687260;
+    color: var(--ink);
+  }
+
+  .category-card--light .category-card__glow {
+    background: rgba(215, 246, 92, 0.12);
+  }
+
+  .how-step__subtitle,
+  .how-codecard__row span:last-child,
+  .how-agent-card__desc,
+  .how-doctor-card__desc {
+    color: #b4bbae;
+  }
+
+  .how-codecard {
+    color: #e1e5db;
+    border-color: #3d4638;
+  }
+
+  .how-codecard__row {
+    border-color: #394133;
+  }
+
+  .how-badge--green {
+    background: #334519;
+    color: #d7f65c;
+  }
+
+  .how-badge--purple {
+    background: #30294a;
+    color: #d7ceff;
+  }
+
+  .how-agent-card__icon {
+    background: #2a3027;
+    color: var(--purple-dk);
+  }
+
+  .how-match-card__avatar {
+    background: #2a3027;
+    border-color: #1a1e18;
+    color: #c9cfc2;
+  }
+
+  .how-match-card__tags span {
+    background: #2a3027;
+    color: #e0e5d8;
+  }
+
+  .how-doctor-card__avatar {
+    background: #173c36;
+    color: #a8f3e6;
+  }
+
+  .how-doctor-card__signature {
+    color: #91ead9;
+  }
+
+  .persona-option:hover,
+  .filter-chip:hover,
+  .pagination__link:hover,
+  .btn--secondary:hover {
+    border-color: var(--purple);
+  }
+
+  .persona-filters__sticky {
+    padding: 0 16px 24px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .persona-filters__selected-title,
+  .persona-option,
+  .acc__label {
+    color: #f0f1e9;
+  }
+
+  .persona-option {
+    background: transparent;
+    border: 0;
+  }
+
+  .persona-filters__clear {
+    color: #8eb8ff;
+  }
+
+  .persona-filter-group__title,
+  .card__brand,
+  .specs-text,
+  .verdict__head,
+  .pagination__status {
+    color: #c2c8bb;
+  }
+
+  .persona-option__box {
+    background: #252b22;
+    border-color: #727b6c;
+  }
+
+  .persona-option--selected .persona-option__box {
+    border-color: #8eb8ff;
+    background: #5e8ff0;
+  }
+
+  .persona-chip--selected,
+  .persona-chip--active {
+    background: #342957;
+    color: #f2efff;
+    border: 1px solid #68559d;
+    box-shadow: 0 8px 18px rgba(183, 165, 255, 0.16);
+  }
+
+  .persona-chip__close {
+    background: #f2efff;
+    color: #42376d;
+  }
+
+  .banner--lime {
+    border-bottom-color: #617b2a;
+  }
+
+  .banner--purple,
+  .skin-tag-pill--purple {
+    border-color: #675a97;
+  }
+
+  .skin-tag-pill--lime {
+    color: #111410;
+  }
+
+  .acc__chevron {
+    background: #252b22;
+    border-color: #5d6657;
+    color: #f0f1e9;
+  }
+
+  .acc__chevron svg path {
+    stroke: #f0f1e9;
+  }
+
+  .card__accordion[open] .acc__chevron {
+    background: #4b3b78;
+    border-color: #8e7ac7;
+  }
+
+  .card__accordion[open] .acc__chevron svg path {
+    stroke: #f8f6ff;
+  }
+
+  .brand-listing-faq__answer {
+    color: #d7ddd0;
+  }
+
+  .persona-option__box,
+  .auth-field input,
+  .profile-field__control,
+  .auth-password-wrap,
+  .auth-divider::before,
+  .auth-divider::after {
+    border-color: var(--border);
+  }
+
+  .auth-mode-switch,
+  .auth-mode-switch__button,
+  .profile-status--incomplete,
+  .how-badge--neutral,
+  .detail-badge,
+  .detail-pill,
+  .detail-match__labels,
+  .ingredient-item {
+    background: #252a23;
+    color: var(--ink);
+    border-color: var(--border);
+  }
+
+  .detail-badge--lime {
+    background: #e4f973;
+    color: #111827;
+    border-color: transparent;
+  }
+
+  .auth-mode-switch__button--active,
+  .persona-chip--selected,
+  .persona-chip--active,
+  .filter-chip.active,
+  .filter-chip:hover {
+    background: var(--purple-lt);
+    color: var(--purple-dk);
+    border-color: var(--purple);
+  }
+
+  .auth-mode-switch__button {
+    color: #c9cfc2;
+  }
+
+  .auth-submit:disabled {
+    background: #4a5048;
+    color: #d8ddd4;
+    opacity: 1;
+  }
+
+  .auth-google:hover {
+    background: #c7e94f;
+    color: #111410;
+  }
+
+  .auth-divider {
+    color: #b4bbae;
+  }
+
+  .auth-alert--error {
+    background: #48212a;
+    border-color: #893b4b;
+    color: #ffb8c2;
+  }
+
+  .auth-alert--success,
+  .profile-status--complete {
+    background: #173c2b;
+    border-color: #287152;
+    color: #a8edc6;
+  }
+
+  .brand-listing-faq__answer {
+    background: #22271f;
+  }
+
+  .site-footer {
+    background: #090b08;
+  }
+
+  .site-footer__copy,
+  .site-footer__link {
+    color: #c3c9bc;
+  }
+
+  .site-footer__bottom {
+    border-color: #30382d;
+    color: #9ba394;
+  }
+
+  .product-detail-page {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .detail-gallery__frame,
+  .detail-gallery__hero,
+  .detail-gallery__thumb,
+  .detail-overall-score,
+  .detail-factor,
+  .skin-tab__label,
+  .skin-tab__panel,
+  .ingredient-row__badge--slate,
+  .ingredient-tag--inactive .ingredient-tag__summary,
+  .ingredient-tag__details,
+  .detail-loading__panel,
+  .detail-loading__gallery,
+  .loading-card {
+    background: #1a1e18;
+    border-color: var(--border);
+    color: var(--ink);
+  }
+
+  .detail-gallery__hero-image,
+  .detail-bottle {
+    background: #eef0e7;
+  }
+
+  .detail-gallery__count,
+  .detail-gallery__arrow {
+    background: rgba(26, 30, 24, 0.94);
+    border-color: var(--border);
+    color: var(--ink);
+  }
+
+  .detail-gallery__arrow:hover {
+    background: #252b22;
+    border-color: var(--purple);
+  }
+
+  .detail-intro__title,
+  .detail-overall-score__status,
+  .detail-block__title,
+  .detail-factor__name,
+  .skin-tab__ring-text,
+  .ingredients-analysis__heading,
+  .ingredient-row__name,
+  .ingredients-accordion__summary,
+  .ingredients-section__title {
+    color: var(--ink);
+  }
+
+  .detail-intro__score-copy,
+  .detail-intro__desc,
+  .detail-overall-score__note,
+  .detail-perfect-match__title,
+  .detail-factor__desc,
+  .skin-tab__quote,
+  .skin-tab__list,
+  .ingredient-row__meta,
+  .ingredient-row__detail,
+  .ingredient-row__chevron,
+  .ingredients-analysis__title {
+    color: var(--muted);
+  }
+
+  .detail-divider,
+  .ingredient-list,
+  .ingredient-row {
+    border-color: var(--border);
+  }
+
+  .detail-overall-score__pill,
+  .skin-tab__label--active,
+  .skin-tab__label[aria-selected='true'] {
+    background: var(--purple-lt);
+    border-color: rgba(183, 165, 255, 0.45);
+    color: var(--purple-dk);
+  }
+
+  .skin-tab__label {
+    background: #252b22;
+    border-color: #4e5848;
+    color: #d8ded1;
+  }
+
+  .skin-tab__label--active,
+  .skin-tab__label[aria-selected='true'] {
+    background: #342957;
+    border-color: #8e7ac7;
+    color: #f0ebff;
+  }
+
+  .detail-perfect-match__pill--blue {
+    background: #1d3146;
+    border-color: #3f6792;
+    color: #b9d7ff;
+  }
+
+  .detail-perfect-match__pill--blue:hover {
+    background: #25405b;
+  }
+
+  .detail-perfect-match__pill--emerald {
+    background: #173c2b;
+    border-color: #287152;
+    color: #a8edc6;
+  }
+
+  .detail-perfect-match__pill--emerald:hover {
+    background: #1f5039;
+  }
+
+  .detail-perfect-match__pill--purple {
+    background: #342957;
+    border-color: #8e7ac7;
+    color: #e2d9ff;
+  }
+
+  .detail-perfect-match__pill--purple:hover {
+    background: #463675;
+  }
+
+  .detail-perfect-match__pill--amber {
+    background: #4b3418;
+    border-color: #8d662a;
+    color: #ffd18e;
+  }
+
+  .detail-perfect-match__pill--amber:hover {
+    background: #61451e;
+  }
+
+  .detail-factor__status--good,
+  .ingredient-row__badge--emerald,
+  .ingredient-tag--active .ingredient-tag__summary {
+    background: #173c2b;
+    border-color: #287152;
+    color: #a8edc6;
+  }
+
+  .detail-factor__status--warning {
+    background: #4b3418;
+    border-color: #8d662a;
+    color: #ffd18e;
+  }
+
+  .detail-factor__status--bad,
+  .ingredient-row__badge--rose,
+  .ingredient-tag--flagged .ingredient-tag__summary,
+  .ingredient-tag--flagged .ingredient-tag__details {
+    background: #48212a;
+    border-color: #893b4b;
+    color: #ffb8c2;
+  }
+
+  .loading-line,
+  .loading-card,
+  .loading-card__banner,
+  .loading-card__image,
+  .loading-card__line,
+  .loading-card__pill,
+  .loading-card__button,
+  .detail-loading__gallery,
+  .detail-loading__panel {
+    background: linear-gradient(90deg, #20251e 0%, #2a3027 50%, #20251e 100%);
   }
 }

@@ -13,6 +13,7 @@ import {
 import ProductImageGallery from '../../../src/components/ProductImageGallery';
 import SkinMatchTabs from '../../../src/components/SkinMatchTabs';
 import {
+  fetchBrandForProduct,
   fetchProductBySlug,
   fetchProductDetailPageData,
   formatProductDisplayName,
@@ -325,6 +326,8 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
   const displayProductName = formatProductDisplayName(product.productName);
   const spfBadge = formatSpfBadge(product.spfRating);
   const paBadge = formatPaBadge(product.paRating);
+  const brand = await fetchBrandForProduct({ brandId: product.brandId, brandName: product.brandName });
+  const brandHref = brand?.slug ? `/sunscreens/best/brand/${brand.slug}` : '';
 
   return (
     <div className="product-detail-page">
@@ -356,7 +359,13 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
 
           <div className="detail-content">
             <div className="detail-intro">
-              <div className="detail-intro__brand">{product.brandName}</div>
+              {brandHref ? (
+                <Link href={brandHref} className="detail-intro__brand detail-intro__brand--link">
+                  {product.brandName}
+                </Link>
+              ) : (
+                <div className="detail-intro__brand">{product.brandName}</div>
+              )}
               <h1 className="detail-intro__title">{displayProductName} : Ingredients &amp; Skin Analysis.</h1>
               <div className="detail-badge-row">
                 {/* {topMatches[0]?.contextLabel ? (

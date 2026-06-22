@@ -1094,6 +1094,25 @@ export async function fetchBrandBySlug(brandSlug) {
   return findLookupBySlug(brands, brandSlug);
 }
 
+export async function fetchBrandForProduct({ brandId = '', brandName = '' } = {}) {
+  const brands = await fetchAllBrands();
+  const safeBrandId = String(brandId || '').trim();
+
+  if (safeBrandId) {
+    const idMatch = brands.find((brand) => brand.id === safeBrandId);
+    if (idMatch) {
+      return idMatch;
+    }
+  }
+
+  const normalizedBrandName = normalizeLookupValue(brandName);
+  return (
+    brands.find(
+      (brand) => normalizeLookupValue(brand.sourceValue || brand.label || '') === normalizedBrandName
+    ) || null
+  );
+}
+
 export async function fetchProductFormatBySlug(productFormatSlug) {
   const productFormats = await fetchAllProductFormats();
   return findLookupBySlug(productFormats, productFormatSlug);
