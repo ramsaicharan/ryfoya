@@ -89,7 +89,10 @@ function Footer({ pages }) {
       </div>
 
       <div className="wrap site-footer__bottom">
-        <p>&copy; {new Date().getFullYear()} Ryfoya. All rights reserved.</p>
+        <p>
+          &copy; {new Date().getFullYear()} Ryfoya. A brand of Kassels Services
+          Private Limited. All rights reserved.
+        </p>
       </div>
     </footer>
   );
