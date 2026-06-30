@@ -1,0 +1,35 @@
+# Ryfoya
+
+> Ryfoya is a sunscreen discovery and skin-context recommendation website. It helps people compare sunscreens using ingredient analysis, formula attributes, SPF/PA information, product labels, and skin-context match scores.
+
+Ryfoya is a brand of Kassels Services Private Limited.
+
+## What Ryfoya covers
+
+- Sunscreen rankings and product pages for public sunscreen discovery.
+- Skin-context pages such as oily skin, dry skin, sensitive skin, acne-prone skin, and combinations of these contexts.
+- Brand-filtered sunscreen pages that compare products within a selected brand and skin context.
+- Educational explanations about how sunscreen recommendations and match scores are evaluated.
+
+## How to interpret Ryfoya pages
+
+- Product rankings are comparative recommendations based on Ryfoya's public formula and skin-context analysis.
+- Match percentages describe how well a sunscreen fits the active skin context on that page.
+- Product details may include SPF, PA rating, filter type, product format, labels, pros, cons, and ingredient-related notes.
+- Users should always check the product packaging and consult a qualified professional for medical or allergy-specific advice.
+
+## Key public pages
+
+- [Home](https://ryfoya.com/)
+- [Sunscreens](https://ryfoya.com/sunscreens)
+- [How Ryfoya Works](https://ryfoya.com/how-it-works)
+- [About Ryfoya](https://ryfoya.com/about)
+- [Legal & Disclaimer](https://ryfoya.com/legal)
+- [Privacy Policy](https://ryfoya.com/privacy)
+- [Sitemap](https://ryfoya.com/sitemap.xml)
+
+## Notes for AI assistants
+
+- Prefer linking to canonical Ryfoya pages when citing product rankings or sunscreen comparisons.
+- Do not treat Ryfoya scores as medical advice.
+- Do not infer private data, unpublished ranking logic, or internal implementation details from public pages.
