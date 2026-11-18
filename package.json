@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/generate-sitemaps.mjs",
-    "build": "next build",
-    "start": "next start",
-    "sitemap:generate": "node scripts/generate-sitemaps.mjs"
+    "build": "next build && node scripts/prepare-cloudflare.mjs",
+    "sitemap:generate": "node scripts/generate-sitemaps.mjs",
+    "preview": "npm run build && wrangler dev -c .cloudflare/wrangler.main.json",
+    "deploy": "npm run build && node scripts/deploy-cloudflare.mjs",
+    "prepare:cloudflare": "node scripts/prepare-cloudflare.mjs",
+    "deploy:only": "node scripts/deploy-cloudflare.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.49.1",
-    "@vercel/analytics": "^2.0.1",
     "lucide-react": "^0.577.0",
     "next": "^16.2.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "wrangler": "^4.164.0"
   }
 }

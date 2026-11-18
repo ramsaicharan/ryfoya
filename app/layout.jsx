@@ -1,5 +1,4 @@
 import Script from 'next/script';
-import { Analytics } from '@vercel/analytics/next';
 import BrandHeader from '../src/components/BrandHeader';
 import Footer from '../src/components/Footer';
 import { fetchAllPersonas, getDefaultMetadata } from '../src/lib/site-data';
@@ -7,7 +6,6 @@ import { getSupabaseConfig } from '../src/lib/supabaseConfig';
 import '../src/styles.css';
 
 export const metadata = getDefaultMetadata();
-export const revalidate = 3600;
 const GA_MEASUREMENT_ID = 'G-WWN3SR559Q';
 
 export default async function RootLayout({ children }) {
@@ -55,7 +53,6 @@ export default async function RootLayout({ children }) {
         <BrandHeader supabaseConfig={supabaseConfig} />
         {children}
         <Footer pages={pages} />
-        <Analytics />
       </body>
     </html>
   );

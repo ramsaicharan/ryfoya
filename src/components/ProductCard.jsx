@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from './AppLink';
 
 function ProductCard({ product, rank }) {
   const isEven = rank % 2 === 0;

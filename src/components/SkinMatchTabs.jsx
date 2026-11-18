@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import Link from './AppLink';
 
 function getMatchStatus(matchPercent) {
   if (matchPercent > 80) {
@@ -29,9 +29,42 @@ function getSkinContextCta(match) {
   return `View other sunscreens for ${descriptor}`;
 }
 
-export default function SkinMatchTabs({ matches }) {
-  const safeMatches = useMemo(() => matches || [], [matches]);
-  const [activeId, setActiveId] = useState(safeMatches[0]?.id || '');
+// The page is prebuilt with the default skin contexts first. A visitor who arrives
+// from a listing (?context=<route slug>) sees that context as the first tab.
+function orderForContext(defaultMatches, allMatches, contextRouteSlug) {
+  if (!contextRouteSlug) {
+    return defaultMatches;
+  }
+
+  const contextMatch = (allMatches || []).find((match) => match.routeSlug === contextRouteSlug);
+
+  if (!contextMatch) {
+    return defaultMatches;
+  }
+
+  return [contextMatch, ...defaultMatches.filter((match) => match.id !== contextMatch.id)];
+}
+
+export default function SkinMatchTabs({ matches, allMatches }) {
+  const defaultMatches = useMemo(() => matches || [], [matches]);
+  const [contextRouteSlug, setContextRouteSlug] = useState('');
+  const safeMatches = useMemo(
+    () => orderForContext(defaultMatches, allMatches, contextRouteSlug),
+    [defaultMatches, allMatches, contextRouteSlug]
+  );
+  const [activeId, setActiveId] = useState(defaultMatches[0]?.id || '');
+
+  useEffect(() => {
+    const slug = String(new URLSearchParams(window.location.search).get('context') || '').trim();
+
+    if (!slug) {
+      return;
+    }
+
+    const ordered = orderForContext(defaultMatches, allMatches, slug);
+    setContextRouteSlug(slug);
+    setActiveId(ordered[0]?.id || '');
+  }, [defaultMatches, allMatches]);
   const activeMatch =
     safeMatches.find((match) => match.id === activeId) || safeMatches[0] || null;
 

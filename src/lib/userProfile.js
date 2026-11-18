@@ -1,6 +1,3 @@
-import 'server-only';
-import { createSupabaseAuthServerClient } from './supabaseAuthServer';
-
 export const PREFERENCE_FIELDS = ['skin_type', 'skin_condition', 'age', 'skin_tone'];
 
 export function isProfileIncomplete(profile) {
@@ -9,33 +6,6 @@ export function isProfileIncomplete(profile) {
   }
 
   return PREFERENCE_FIELDS.every((field) => !String(profile[field] || '').trim());
-}
-
-export async function getUserProfile(userId) {
-  if (!userId) {
-    return null;
-  }
-
-  const supabase = await createSupabaseAuthServerClient();
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('user_id, email, full_name, skin_type, skin_condition, age, skin_tone, created_at, updated_at')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Could not load user profile: ${error.message}`);
-  }
-
-  return data || null;
-}
-
-export async function getSafeUserProfile(userId) {
-  try {
-    return await getUserProfile(userId);
-  } catch {
-    return null;
-  }
 }
 
 export function buildPreferenceOptions(personas) {

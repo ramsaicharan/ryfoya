@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { createSupabaseBrowserClient } from '../lib/supabaseBrowser';
+import { getSafeNext, loginWithPassword, signInWithGoogle, signUpWithPassword } from '../lib/authClient';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -51,8 +53,94 @@ function GoogleMark() {
   );
 }
 
-function LoginAuthPanel({ next, error, message, initialMode, loginAction, signUpAction, googleAction }) {
-  const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'login');
+function LoginAuthPanel({ supabaseConfig }) {
+  const supabase = useMemo(() => createSupabaseBrowserClient(supabaseConfig), [supabaseConfig]);
+  const [mode, setMode] = useState('login');
+  const [next, setNext] = useState('/sunscreens');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+
+  // The page is prebuilt, so its ?next=, ?error=, ?message= and ?mode= are read here.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const safeNext = getSafeNext(params.get('next'));
+    setNext(safeNext);
+    setError(String(params.get('error') || '').trim());
+    setMessage(String(params.get('message') || '').trim());
+    setMode(params.get('mode') === 'signup' ? 'signup' : 'login');
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        window.location.replace(safeNext);
+      }
+    });
+  }, [supabase]);
+
+  async function run(action) {
+    setIsBusy(true);
+    setError('');
+    setMessage('');
+
+    try {
+      await action();
+    } catch (caught) {
+      setError(caught?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  function handleGoogle(event) {
+    event.preventDefault();
+    run(async () => {
+      const result = await signInWithGoogle(supabase, next);
+      if (result.error) setError(result.error);
+    });
+  }
+
+  function handleLogin(event) {
+    event.preventDefault();
+    run(async () => {
+      const result = await loginWithPassword(supabase, {
+        email: loginValues.email.trim(),
+        password: loginValues.password
+      });
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      window.location.assign(next);
+    });
+  }
+
+  function handleSignUp(event) {
+    event.preventDefault();
+    run(async () => {
+      const result = await signUpWithPassword(supabase, {
+        fullName: signupValues.fullName.trim(),
+        email: signupValues.email.trim(),
+        password: signupValues.password,
+        confirmPassword: signupValues.confirmPassword,
+        next
+      });
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      if (result.signedIn) {
+        window.location.assign(next);
+        return;
+      }
+
+      setMode('login');
+      setMessage('Check your email to confirm your account, then log in.');
+    });
+  }
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [loginValues, setLoginValues] = useState({
@@ -117,9 +205,8 @@ function LoginAuthPanel({ next, error, message, initialMode, loginAction, signUp
       {error ? <div className="auth-alert auth-alert--error">{error}</div> : null}
       {message ? <div className="auth-alert auth-alert--success">{message}</div> : null}
 
-      <form action={googleAction} className="auth-form">
-        <input type="hidden" name="next" value={next} />
-        <button className="auth-google" type="submit">
+      <form onSubmit={handleGoogle} className="auth-form">
+        <button className="auth-google" type="submit" disabled={isBusy}>
           <GoogleMark />
           <span>Continue with Google</span>
         </button>
@@ -130,8 +217,7 @@ function LoginAuthPanel({ next, error, message, initialMode, loginAction, signUp
       </div>
 
       {mode === 'login' ? (
-        <form action={loginAction} className="auth-form">
-          <input type="hidden" name="next" value={next} />
+        <form onSubmit={handleLogin} className="auth-form">
           <h2 className="auth-form__title">Welcome back</h2>
           <label className="auth-field">
             <span>Email</span>
@@ -156,7 +242,7 @@ function LoginAuthPanel({ next, error, message, initialMode, loginAction, signUp
             showPassword={showLoginPassword}
             onToggle={() => setShowLoginPassword((value) => !value)}
           />
-          <button className="auth-submit" type="submit" disabled={!canLogin}>
+          <button className="auth-submit" type="submit" disabled={!canLogin || isBusy}>
             Log in
           </button>
           <button className="auth-swap" type="button" onClick={() => setMode('signup')}>
@@ -164,8 +250,7 @@ function LoginAuthPanel({ next, error, message, initialMode, loginAction, signUp
           </button>
         </form>
       ) : (
-        <form action={signUpAction} className="auth-form">
-          <input type="hidden" name="next" value={next} />
+        <form onSubmit={handleSignUp} className="auth-form">
           <h2 className="auth-form__title">Create your account</h2>
           <label className="auth-field">
             <span>Name</span>
@@ -219,7 +304,7 @@ function LoginAuthPanel({ next, error, message, initialMode, loginAction, signUp
           {signupPasswordMismatch ? (
             <p className="auth-field__hint auth-field__hint--error">Passwords do not match.</p>
           ) : null}
-          <button className="auth-submit auth-submit--purple" type="submit" disabled={!canSignUp}>
+          <button className="auth-submit auth-submit--purple" type="submit" disabled={!canSignUp || isBusy}>
             Create account
           </button>
           <button className="auth-swap" type="button" onClick={() => setMode('login')}>

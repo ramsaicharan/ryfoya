@@ -557,7 +557,34 @@ function buildShards(entriesByFamily) {
   });
 }
 
+// Old persona URLs (/<page_slug>) moved to /sunscreens/best/<route_slug>. The site is
+// served as static files, so Cloudflare does these redirects from public/_redirects.
+const REDIRECTS_PATH = path.join(PUBLIC_DIR, '_redirects');
+const RESERVED_TOP_LEVEL = new Set(['sunscreens', 'about', 'how-it-works', 'legal', 'privacy', 'login', 'profile', 'auth', 'sitemaps', '_next']);
+
+async function writePersonaRedirects() {
+  const personas = await fetchAllSupabaseRows('target_personas', 'id, page_slug, route_slug', {
+    orderBy: [{ column: 'id', ascending: true }]
+  });
+  const lines = new Set();
+
+  for (const persona of personas) {
+    const pageSlug = String(persona.page_slug || '').trim();
+    const routeSlug = String(persona.route_slug || '').trim();
+
+    if (!pageSlug || !routeSlug || pageSlug.includes('/') || RESERVED_TOP_LEVEL.has(pageSlug)) {
+      continue;
+    }
+
+    lines.add(`/${pageSlug} /sunscreens/best/${routeSlug} 301`);
+  }
+
+  await writeTextFile(REDIRECTS_PATH, `${[...lines].join('\n')}\n`);
+  console.log(`Wrote ${lines.size} persona redirect(s) to public/_redirects.`);
+}
+
 async function main() {
+  await writePersonaRedirects();
   const entriesByFamily = await buildSitemapEntriesByFamily();
   const shards = buildShards(entriesByFamily);
 

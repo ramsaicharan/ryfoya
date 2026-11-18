@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '../../src/components/AppLink';
 import { Heart, Shield, Sparkles, Microscope, ArrowRight } from 'lucide-react';
 import { buildAlternates } from '../../src/lib/site-data';
 

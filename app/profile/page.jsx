@@ -1,35 +1,17 @@
-import { redirect } from 'next/navigation';
-import ProfilePreferencesForm from '../../src/components/ProfilePreferencesForm';
-import { saveProfilePreferences } from '../../src/lib/authActions';
+import ProfileClient from '../../src/components/ProfileClient';
 import { fetchAllPersonas } from '../../src/lib/site-data';
-import { createSupabaseAuthServerClient } from '../../src/lib/supabaseAuthServer';
-import { buildPreferenceOptions, getSafeUserProfile, isProfileIncomplete } from '../../src/lib/userProfile';
+import { getSupabaseConfig } from '../../src/lib/supabaseConfig';
+import { buildPreferenceOptions } from '../../src/lib/userProfile';
 
 export const metadata = {
   title: 'Profile | Ryfoya',
-  description: 'Save your Ryfoya skin profile preferences.'
+  description: 'Save your Ryfoya skin profile preferences.',
+  robots: { index: false }
 };
 
-export default async function ProfilePage({ searchParams }) {
-  const supabase = await createSupabaseAuthServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  const resolvedSearchParams = await searchParams;
-
-  if (!user) {
-    redirect('/login?next=/profile');
-  }
-
-  const [profile, personas] = await Promise.all([
-    getSafeUserProfile(user.id),
-    fetchAllPersonas().catch(() => [])
-  ]);
+export default async function ProfilePage() {
+  const personas = await fetchAllPersonas().catch(() => []);
   const options = buildPreferenceOptions(personas);
-  const complete = !isProfileIncomplete(profile);
-  const saved = String(resolvedSearchParams?.saved || '') === '1';
-  const error = String(resolvedSearchParams?.error || '').trim();
-  const displayName = String(profile?.full_name || user.user_metadata?.full_name || '').trim();
 
   return (
     <main className="profile-page">
@@ -44,20 +26,7 @@ export default async function ProfilePage({ searchParams }) {
         </div>
 
         <div className="profile-card">
-          <div className="profile-card__top">
-            <div>
-              <h2 className="profile-card__title">Skin preferences</h2>
-              <p className="profile-card__meta">{displayName ? `${displayName} · ${user.email}` : user.email}</p>
-            </div>
-            <span className={`profile-status ${complete ? 'profile-status--complete' : 'profile-status--incomplete'}`}>
-              {complete ? 'Complete' : 'Incomplete'}
-            </span>
-          </div>
-
-          {saved ? <div className="auth-alert auth-alert--success">Your skin profile has been saved.</div> : null}
-          {error ? <div className="auth-alert auth-alert--error">{error}</div> : null}
-
-          <ProfilePreferencesForm profile={profile} options={options} action={saveProfilePreferences} />
+          <ProfileClient supabaseConfig={getSupabaseConfig()} options={options} />
         </div>
       </section>
     </main>

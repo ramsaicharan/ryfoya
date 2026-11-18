@@ -16,14 +16,29 @@ The site reads product and persona data directly from Supabase.
 - Supabase
 - Standard CSS
 
+## How It Is Built And Served
+
+The site is prebuilt. `next build` exports every page as static HTML (`output: 'export'`), and Cloudflare Workers static assets serves it. There is no server at runtime, so the old revalidation endpoint, middleware and Vercel deploy hook are gone.
+
+- Pages read product and persona data from Supabase at build time.
+- Sign-in runs in the browser through Supabase.
+- `scripts/generate-sitemaps.mjs` runs as `prebuild` and writes `public/sitemaps/**` and `public/_redirects` (ignored by Git).
+- `scripts/prepare-cloudflare.mjs` runs after `next build`. It strips navigation `.txt` files, then splits the pages into one Worker per page type, because the free plan allows 20,000 files per Worker:
+  - `ryfoya` serves everything not listed below (`out/`)
+  - `ryfoya-brand` serves `/sunscreens/best/brand/*` (`out-brand/`)
+  - `ryfoya-filter` serves `/sunscreens/best/filter/*` (`out-filter/`)
+- A page type over `splitAt` files in `cloudflare.config.json` is split again by its next path segment (`ryfoya-filter-1`, `ryfoya-filter-2`, ...). The generated Wrangler configs go to `.cloudflare/`.
+- Routes on ryfoya.com are attached only when `cloudflare.config.json` has `"live": true`. With `false`, deploys go to the `*.workers.dev` test addresses only.
+- `www.ryfoya.com` is redirected to `ryfoya.com` by a Cloudflare Redirect Rule (dashboard), not by the Workers.
+
 ## Environment Variables
 
-Use these in local development and on Vercel:
+Use these in local development (copy `.env.example` to `.env`):
 
 ```bash
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
-REVALIDATE_SECRET=your-long-random-secret
+NEXT_PUBLIC_SITE_URL=https://ryfoya.com
 ```
 
 Legacy fallback support still exists for:
@@ -43,177 +58,45 @@ Install dependencies:
 npm install
 ```
 
-Run the app:
+Commands:
 
 ```bash
-npm run dev
+npm run dev      # dev server
+npm run build        # sitemaps + static export (renders ~24,000 pages, about 12 minutes)
+npm run preview      # builds, then serves the main Worker locally with wrangler dev
+npm run deploy       # builds, then deploys every Worker
+npm run deploy:only  # deploys the last build without rebuilding
 ```
 
-Build for production:
+`npm run deploy` from this machine needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment (see `.env.example`).
+
+## Deploying
+
+The GitHub Action `Deploy to Cloudflare` (`.github/workflows/deploy-cloudflare.yml`) builds and deploys on every push to `main`, and can be run by hand. Only one deploy runs at a time, with a 60 minute limit. The repo is public, so Actions minutes are free.
+
+It can also run from a Mac:
 
 ```bash
-npm run build
+npm run deploy       # rebuild from Supabase, then upload every Worker (only changed files go up)
+npm run deploy:only  # upload the last build again without rebuilding
 ```
 
-## Cache Revalidation
+That needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in `.env`, next to the Supabase keys.
 
-Production data reads use Next.js data-cache tags. After changing route-driving data in Supabase, call the internal revalidation endpoint so production updates immediately instead of waiting for TTL expiry.
-
-Endpoint:
-
-```bash
-POST /api/internal/revalidate
-```
-
-Auth:
-
-- set `REVALIDATE_SECRET` in Vercel
-- send it as either:
-  - `Authorization: Bearer <secret>`
-  - `x-revalidate-secret: <secret>`
-  - `?secret=<secret>`
-
-Secret value:
-
-- use any long random string
-- recommended length: `32+` characters
-- example:
-
-```bash
-openssl rand -hex 32
-```
-
-Recommended payloads:
-
-```bash
-curl -X POST "https://ryfoya.com/api/internal/revalidate" \
-  -H "Authorization: Bearer $REVALIDATE_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"scope":"all"}'
-```
-
-```bash
-curl -X POST "https://ryfoya.com/api/internal/revalidate" \
-  -H "Authorization: Bearer $REVALIDATE_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"scope":"personas"}'
-```
-
-Available scopes:
-
-- `all`
-- `listings`
-- `sitemap`
-- `products`
-- `personas`
-- `lookups`
-
-Use this after changes to:
-
-- `target_personas`
-- `products`
-- `product_skin_scores`
-- `brands`
-- `product_formats`
-- `filter_types`
-
-Supabase webhook-friendly usage:
-
-- the endpoint also accepts `GET`
-- scope can be passed in the query string
-
-Examples:
-
-```text
-https://ryfoya.com/api/internal/revalidate?scope=personas&secret=YOUR_SECRET
-```
-
-```text
-https://ryfoya.com/api/internal/revalidate?scope=lookups&secret=YOUR_SECRET
-```
-
-```text
-https://ryfoya.com/api/internal/revalidate?scope=products&secret=YOUR_SECRET
-```
-
-Recommended Supabase webhook mapping:
-
-- `target_personas` -> `scope=personas`
-- `brands`, `product_formats`, `filter_types` -> `scope=lookups`
-- `products`, `product_skin_scores` -> `scope=products`
-
-If you want a single simple webhook first, use:
-
-```text
-https://ryfoya.com/api/internal/revalidate?scope=all&secret=YOUR_SECRET
-```
-
-Start production locally:
-
-```bash
-npm run start
-```
-
-## Static Sitemap Refresh
-
-Production sitemap files are generated during Vercel builds and served as static files:
-
-- `public/sitemap.xml`
-- `public/sitemaps/**`
-
-These generated XML files are intentionally ignored by Git. They should not be committed because they change often and otherwise create noisy `main` conflicts.
-
-Vercel runs the sitemap generator through the `prebuild` script:
-
-```bash
-node scripts/generate-sitemaps.mjs
-```
-
-The recommended production refresh path is the manual GitHub Action named `Refresh sitemap`. It does not commit sitemap XML. It calls a Vercel deploy hook, Vercel rebuilds the current `main`, and the build writes fresh sitemap files into `public/`.
-
-Before using the action, create a Vercel deploy hook:
-
-```text
-Vercel Project -> Settings -> Git -> Deploy Hooks
-```
-
-Then add the hook URL as a GitHub repository secret:
-
-```text
-GitHub repo -> Settings -> Secrets and variables -> Actions
-```
-
-Required GitHub secret:
-
-- `VERCEL_DEPLOY_HOOK_URL`
-
-Vercel also needs these environment variables so the build can generate sitemaps:
+Required GitHub secrets (repo Settings -> Secrets and variables -> Actions):
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_SITE_URL=https://ryfoya.com`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
 
-Run it from the GitHub UI:
+After changing data in Supabase, run the Deploy to Cloudflare workflow manually (Actions tab -> Run workflow -> main). The live site only changes when it is rebuilt and redeployed.
 
-```text
-Actions -> Refresh sitemap -> Run workflow -> main
-```
-
-Or trigger it with GitHub CLI:
+Or with GitHub CLI:
 
 ```bash
-gh workflow run generate-sitemaps.yml --ref main
+gh workflow run deploy-cloudflare.yml --ref main
 ```
-
-This command does not require switching your local branch. You can stay on `codex/develop`; the GitHub Action runs separately and triggers a Vercel rebuild of `main`.
-
-For local preview/debug only:
-
-```bash
-npm run sitemap:generate
-```
-
-This only writes ignored sitemap XML files on your current local branch. It does not commit, push, or update production.
 
 ## Route Architecture
 
@@ -228,9 +111,8 @@ This only writes ignored sitemap XML files on your current local branch. It does
   - rendered by [app/sunscreens/page.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/sunscreens/page.jsx)
 
 - `/:page_slug`
-  - persona page from `target_personas`
-  - paginated
-  - rendered by [app/[page_slug]/page.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/[page_slug]/page.jsx)
+  - legacy persona URL; 301-redirects to `/sunscreens/best/:route_slug`
+  - redirects are written to `public/_redirects` by `scripts/generate-sitemaps.mjs` and applied by Cloudflare
 
 - `/sunscreens/:slug`
   - individual sunscreen detail page
@@ -264,7 +146,7 @@ The footer receives a lightweight persona list from Supabase so it can show skin
 
 ## Data Layer
 
-All server-side data access is centralized in:
+All build-time data access is centralized in:
 
 - [src/lib/site-data.js](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/lib/site-data.js)
 - [src/lib/supabaseServer.js](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/lib/supabaseServer.js)
@@ -275,7 +157,7 @@ All server-side data access is centralized in:
 - normalization of database rows
 - metadata helpers
 - pagination
-- server-side caching
+- build-time loading and caching
 
 `supabaseServer.js` creates the Supabase server client with the anon key.
 
@@ -302,16 +184,6 @@ Reads from `products` using:
 
 The page also fetches lightweight persona rows for the left-side filter UI.
 
-### `/:page_slug`
-
-Reads:
-
-1. `target_personas` by `page_slug`
-2. `product_skin_scores` by `persona_id`
-3. joined `products` data for the ranking cards
-
-This route also fetches lightweight persona rows for the filter sidebar.
-
 ### `/sunscreens/:slug`
 
 Reads:
@@ -325,31 +197,20 @@ Reads:
 
 The `context` query param is used to pin the originating persona match first when the detail page is opened from a persona page.
 
-## Caching Strategy
+## Rendering Model
 
-The app is not relying on static prerender for the DB-backed ranking/detail pages.
-
-Instead, it uses cached server fetchers inside [src/lib/site-data.js](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/lib/site-data.js).
-
-This is the current performance model:
-
-- HTML for DB-heavy pages is rendered on demand
-- Supabase reads underneath those pages are cached with `unstable_cache`
-- repeated metadata/page fetch duplication has been removed where possible
-- pagination reduces payload size on list pages
-
-This was chosen because it is operationally safer than forcing full build-time prerender for every DB-backed route.
+Every page is rendered to static HTML at build time from Supabase data, so there is no runtime cache or revalidation. Data changes reach the live site only after a rebuild and redeploy (see "Deploying").
 
 ## Pagination
 
-Current list pages are server-side paginated.
+Each list is one static page holding every product; the browser shows 24 at a time.
 
 - default page size: `24`
-- query param: `?page=2`
+- `?page=N` links still work: the pager reads the query string and updates it as you page
 
 Pagination UI is rendered by:
 
-- [src/components/Pagination.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/components/Pagination.jsx)
+- [src/components/ListingPager.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/components/ListingPager.jsx)
 
 ## Loading States
 
@@ -357,7 +218,6 @@ Loading skeletons are implemented for the major route segments:
 
 - [app/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/loading.jsx)
 - [app/sunscreens/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/sunscreens/loading.jsx)
-- [app/[page_slug]/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/[page_slug]/loading.jsx)
 - [app/sunscreens/[slug]/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/sunscreens/[slug]/loading.jsx)
 
 These improve perceived performance during route transitions.
@@ -403,18 +263,12 @@ Important indexes that should exist:
 
 ## Deployment Notes
 
-Set these on Vercel:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-
-No SPA rewrites are needed because routing is handled by Next.js.
+See "Deploying" above. Routing is handled by the exported static pages, so no SPA rewrites are needed.
 
 ## Current Performance Notes
 
 The main performance improvements already in place are:
 
-- cached Supabase fetchers
 - reduced duplicate metadata/page DB work
 - paginated list pages
 - slimmer persona payloads for sidebar/footer
@@ -425,6 +279,6 @@ Image optimization through `next/image` is intentionally not part of the current
 ## Repo Notes
 
 - `.env` is intentionally ignored
-- the sitemap is generated from Supabase during Vercel build and served as ignored static XML
+- the sitemap is generated from Supabase during the build and served as ignored static XML
 - footer skin-context links are intentionally limited
 - the architecture is route-first, with Supabase access centralized in `site-data.js`

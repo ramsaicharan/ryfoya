@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Header from '../../../../src/components/Header';
 import BrandListingFaq from '../../../../src/components/BrandListingFaq';
 import JsonLd from '../../../../src/components/JsonLd';
-import Pagination from '../../../../src/components/Pagination';
+import ListingPager from '../../../../src/components/ListingPager';
 import PersonaChoiceSidebar from '../../../../src/components/PersonaChoiceSidebar';
 import ProductCard from '../../../../src/components/ProductCard';
 import {
@@ -16,12 +16,14 @@ import {
   getListingJsonLd,
   getListingMetadata
 } from '../../../../src/lib/site-data';
+import { getListingStaticParams } from '../../../../src/lib/static-paths';
 
-export const dynamic = 'force-dynamic';
+// Every listing in the sitemap is prebuilt; anything else is a 404.
+export const dynamicParams = false;
+const ALL_PRODUCTS = 1000;
 
-function parsePageParam(value) {
-  const page = Number.parseInt(String(value || '1'), 10);
-  return Number.isFinite(page) && page > 0 ? page : 1;
+export function generateStaticParams() {
+  return getListingStaticParams();
 }
 
 function parseListingSegments(segments) {
@@ -156,7 +158,7 @@ export async function generateMetadata({ params }) {
   return getListingMetadata({ persona, brand, productFormat, filterType });
 }
 
-export default async function ListingRoutePage({ params, searchParams }) {
+export default async function ListingRoutePage({ params }) {
   const { segments } = await params;
   const criteria = parseListingSegments(segments);
 
@@ -164,10 +166,8 @@ export default async function ListingRoutePage({ params, searchParams }) {
     notFound();
   }
 
-  const resolvedSearchParams = await searchParams;
-  const currentPage = parsePageParam(resolvedSearchParams?.page);
   const [pageData, filtersData] = await Promise.all([
-    fetchListingPageData(criteria, currentPage),
+    fetchListingPageData(criteria, 1, ALL_PRODUCTS),
     fetchListingFiltersData()
   ]);
 
@@ -175,7 +175,7 @@ export default async function ListingRoutePage({ params, searchParams }) {
     notFound();
   }
 
-  const { persona, products, formulasReviewed, totalPages, currentPage: resolvedPage, faq } = pageData;
+  const { persona, products, formulasReviewed, faq } = pageData;
   const listingPath = buildListingPath({
     skinContextRouteSlug: criteria.skinContextRouteSlug || '',
     brandSlug: criteria.brandSlug || '',
@@ -188,7 +188,7 @@ export default async function ListingRoutePage({ params, searchParams }) {
     description: persona?.page_description,
     pathname: listingPath,
     products,
-    startPosition: (resolvedPage - 1) * 24 + 1,
+    startPosition: 1,
     scoreLabel: criteria.skinContextRouteSlug
       ? `Score for ${persona?.page_title || 'Skin Context'}`
       : 'Overall Score'
@@ -211,7 +211,7 @@ export default async function ListingRoutePage({ params, searchParams }) {
         <div className="listing-content">
           {products.length > 0 ? (
             <>
-              <div className="card-grid">
+              <ListingPager pageSize={24}>
                 {products.map((product, index) => (
                   <ProductCard
                     key={product.id || `${product.productName}-${index}`}
@@ -219,15 +219,10 @@ export default async function ListingRoutePage({ params, searchParams }) {
                       ...product,
                       contextRouteSlug: criteria.skinContextRouteSlug || ''
                     }}
-                    rank={(resolvedPage - 1) * 24 + index + 1}
+                    rank={index + 1}
                   />
                 ))}
-              </div>
-              <Pagination
-                basePath={`/${['sunscreens', 'best', ...segments].join('/')}`}
-                currentPage={resolvedPage}
-                totalPages={totalPages}
-              />
+              </ListingPager>
               <BrandListingFaq faq={faq} />
             </>
           ) : (

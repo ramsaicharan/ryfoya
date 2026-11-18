@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '../../../src/components/AppLink';
 import { notFound } from 'next/navigation';
 import {
   Activity,
@@ -19,8 +19,14 @@ import {
   formatProductDisplayName,
   getProductMetadata
 } from '../../../src/lib/site-data';
+import { getProductStaticParams } from '../../../src/lib/static-paths';
 
-export const dynamic = 'force-dynamic';
+// Every product in the sitemap is prebuilt; anything else is a 404.
+export const dynamicParams = false;
+
+export function generateStaticParams() {
+  return getProductStaticParams();
+}
 
 function extractNumber(value) {
   const match = String(value || '').match(/(\d+(?:\.\d+)?)/);
@@ -305,18 +311,17 @@ export async function generateMetadata({ params }) {
   return getProductMetadata(product);
 }
 
-export default async function SunscreenDetailPage({ params, searchParams }) {
+export default async function SunscreenDetailPage({ params }) {
   const { slug } = await params;
-  const resolvedSearchParams = await searchParams;
-  const contextRouteSlug = String(resolvedSearchParams?.context || '').trim();
-  const pageData = await fetchProductDetailPageData(slug, contextRouteSlug);
+  // Load every skin context; the tabs pick the one named in ?context= in the browser.
+  const pageData = await fetchProductDetailPageData(slug, '*');
 
   if (!pageData) {
     notFound();
   }
 
   const { product, evaluations, skinMatches, activeIngredients, inactiveIngredients } = pageData;
-  const topMatches = skinMatches;
+  const topMatches = skinMatches.filter((match) => match.isDefault);
   const performanceFactors = buildPerformanceFactors(evaluations);
   const brandForArt = (product.brandName || 'BRAND').slice(0, 10).toUpperCase();
   const galleryImages = product.imageLinks || [];
@@ -425,7 +430,7 @@ export default async function SunscreenDetailPage({ params, searchParams }) {
             <section className="detail-block">
               <h2 className="detail-block__title">Skin Type Match</h2>
               {topMatches.length > 0 ? (
-                <SkinMatchTabs matches={topMatches} />
+                <SkinMatchTabs matches={topMatches} allMatches={skinMatches} />
               ) : (
                 <div className="detail-empty-state">No persona-specific skin match data is available yet.</div>
               )}

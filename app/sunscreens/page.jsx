@@ -1,6 +1,6 @@
 import Header from '../../src/components/Header';
 import JsonLd from '../../src/components/JsonLd';
-import Pagination from '../../src/components/Pagination';
+import ListingPager from '../../src/components/ListingPager';
 import PersonaChoiceSidebar from '../../src/components/PersonaChoiceSidebar';
 import ProductCard from '../../src/components/ProductCard';
 import {
@@ -11,20 +11,12 @@ import {
   getSunscreensMetadata
 } from '../../src/lib/site-data';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata = getSunscreensMetadata();
+const ALL_PRODUCTS = 1000;
 
-function parsePageParam(value) {
-  const page = Number.parseInt(String(value || '1'), 10);
-  return Number.isFinite(page) && page > 0 ? page : 1;
-}
-
-export default async function SunscreensPage({ searchParams }) {
-  const resolvedSearchParams = await searchParams;
-  const currentPage = parsePageParam(resolvedSearchParams?.page);
-  const [{ products, formulasReviewed, totalPages, currentPage: resolvedPage }, filterData] = await Promise.all([
-    fetchOverallSunscreens(currentPage),
+export default async function SunscreensPage() {
+  const [{ products, formulasReviewed }, filterData] = await Promise.all([
+    fetchOverallSunscreens(1, ALL_PRODUCTS),
     fetchListingFiltersData()
   ]);
   const pagePersona = {
@@ -36,7 +28,7 @@ export default async function SunscreensPage({ searchParams }) {
     description: pagePersona.page_description,
     pathname: '/sunscreens',
     products,
-    startPosition: (resolvedPage - 1) * 24 + 1,
+    startPosition: 1,
     scoreLabel: 'Overall Score'
   });
 
@@ -57,16 +49,15 @@ export default async function SunscreensPage({ searchParams }) {
         <div className="listing-content">
           {products.length > 0 ? (
             <>
-              <div className="card-grid">
+              <ListingPager pageSize={24}>
                 {products.map((product, index) => (
                   <ProductCard
                     key={product.id || `${product.productName}-${index}`}
                     product={product}
-                    rank={(resolvedPage - 1) * 24 + index + 1}
+                    rank={index + 1}
                   />
                 ))}
-              </div>
-              <Pagination basePath="/sunscreens" currentPage={resolvedPage} totalPages={totalPages} />
+              </ListingPager>
             </>
           ) : (
             <p style={{ padding: '40px 0' }}>No overall sunscreen rankings are available yet.</p>

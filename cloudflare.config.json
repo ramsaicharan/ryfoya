@@ -1,0 +1,12 @@
+{
+  "zone": "ryfoya.com",
+  "hostname": "ryfoya.com",
+  "live": false,
+  "workerPrefix": "ryfoya",
+  "fileLimit": 20000,
+  "splitAt": 18000,
+  "groups": [
+    { "name": "brand", "path": "sunscreens/best/brand" },
+    { "name": "filter", "path": "sunscreens/best/filter" }
+  ]
+}

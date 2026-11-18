@@ -1,35 +1,12 @@
-import { redirect } from 'next/navigation';
 import LoginAuthPanel from '../../src/components/LoginAuthPanel';
-import { loginWithPassword, signInWithGoogle, signUpWithPassword } from '../../src/lib/authActions';
-import { getCurrentUser } from '../../src/lib/supabaseAuthServer';
+import { getSupabaseConfig } from '../../src/lib/supabaseConfig';
 
 export const metadata = {
   title: 'Login | Ryfoya',
   description: 'Log in or sign up to save your Ryfoya skin profile.'
 };
 
-function getSafeNext(value) {
-  const next = String(value || '').trim();
-
-  if (!next || !next.startsWith('/') || next.startsWith('//')) {
-    return '/sunscreens';
-  }
-
-  return next;
-}
-
-export default async function LoginPage({ searchParams }) {
-  const user = await getCurrentUser();
-  const resolvedSearchParams = await searchParams;
-  const next = getSafeNext(resolvedSearchParams?.next);
-  const error = String(resolvedSearchParams?.error || '').trim();
-  const message = String(resolvedSearchParams?.message || '').trim();
-  const mode = String(resolvedSearchParams?.mode || '').trim() === 'signup' ? 'signup' : 'login';
-
-  if (user) {
-    redirect(next);
-  }
-
+export default function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-hero wrap">
@@ -42,15 +19,7 @@ export default async function LoginPage({ searchParams }) {
           </p>
         </div>
 
-        <LoginAuthPanel
-          next={next}
-          error={error}
-          message={message}
-          initialMode={mode}
-          loginAction={loginWithPassword}
-          signUpAction={signUpWithPassword}
-          googleAction={signInWithGoogle}
-        />
+        <LoginAuthPanel supabaseConfig={getSupabaseConfig()} />
       </section>
     </main>
   );

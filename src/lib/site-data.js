@@ -1766,21 +1766,25 @@ const fetchProductSkinScoreRowsCached = unstable_cache(
   { revalidate: PRODUCT_REVALIDATE, tags: ['product-skin-scores'] }
 );
 
+// contextRouteSlug '*' returns every skin context (each flagged isDefault or not),
+// so a prebuilt product page can show whichever ?context= a visitor arrives with.
 async function fetchProductSkinMatches(productId, contextRouteSlug = '') {
+  const includeAllContexts = contextRouteSlug === '*';
   const [rows, personas, contextPersona] = await Promise.all([
     fetchProductSkinScoreRowsCached(productId),
     fetchAllPersonas(),
-    contextRouteSlug ? fetchPersonaByRouteSlug(contextRouteSlug).catch(() => null) : null
+    contextRouteSlug && !includeAllContexts ? fetchPersonaByRouteSlug(contextRouteSlug).catch(() => null) : null
   ]);
 
   const contextPersonaId = contextPersona?.id || '';
+  const defaultPersonaIds = new Set(SKIN_CONTEXT_PERSONA_IDS);
   const allowedPersonaIds = new Set(
     contextPersonaId ? [contextPersonaId, ...SKIN_CONTEXT_PERSONA_IDS] : SKIN_CONTEXT_PERSONA_IDS
   );
   const personaMap = new Map((personas || []).map((persona) => [persona.id, persona]));
 
   return rows
-    .filter((row) => allowedPersonaIds.has(row.persona_id))
+    .filter((row) => includeAllContexts || allowedPersonaIds.has(row.persona_id))
     .map((row) => {
       const persona = personaMap.get(row.persona_id) || null;
       const score = normalizeScore(row.score);
@@ -1798,7 +1802,8 @@ async function fetchProductSkinMatches(productId, contextRouteSlug = '') {
         pageHref: buildPersonaPath(persona?.route_slug, persona?.page_slug),
         pageTitle: persona?.page_title || 'Skin Context Match',
         contextLabel: buildPersonaContext(persona),
-        tabLabel: getPersonaTabLabel(persona)
+        tabLabel: getPersonaTabLabel(persona),
+        isDefault: defaultPersonaIds.has(row.persona_id)
       };
     })
     .sort((left, right) => {
