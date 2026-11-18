@@ -1,7 +1,7 @@
 {
   "zone": "ryfoya.com",
   "hostname": "ryfoya.com",
-  "live": false,
+  "live": true,
   "workerPrefix": "ryfoya",
   "fileLimit": 20000,
   "splitAt": 18000,
