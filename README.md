@@ -41,15 +41,6 @@ SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_SITE_URL=https://ryfoya.com
 ```
 
-Legacy fallback support still exists for:
-
-```bash
-VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
-```
-
-These are only backward-compatible fallbacks and should not be the primary config.
-
 ## Local Development
 
 Install dependencies:
@@ -212,16 +203,6 @@ Pagination UI is rendered by:
 
 - [src/components/ListingPager.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/components/ListingPager.jsx)
 
-## Loading States
-
-Loading skeletons are implemented for the major route segments:
-
-- [app/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/loading.jsx)
-- [app/sunscreens/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/sunscreens/loading.jsx)
-- [app/sunscreens/[slug]/loading.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/app/sunscreens/[slug]/loading.jsx)
-
-These improve perceived performance during route transitions.
-
 ## Important Components
 
 - [src/components/Header.jsx](/Users/ramcharan/Documents/0toX/sunscreen-analyser/src/components/Header.jsx)
@@ -270,9 +251,8 @@ See "Deploying" above. Routing is handled by the exported static pages, so no SP
 The main performance improvements already in place are:
 
 - reduced duplicate metadata/page DB work
-- paginated list pages
+- list pages paged in the browser, 24 at a time
 - slimmer persona payloads for sidebar/footer
-- loading skeletons for route transitions
 
 Image optimization through `next/image` is intentionally not part of the current setup.
 
